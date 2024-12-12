@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "trd_utils"
+version = "0.0.1"
+description = "Common Basic Utils for Python3. By ALiwoto."
+authors = ["ALiwoto <aminnimaj@gmail.com>"]
+packages = [
+    { include = "trd_utils" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Natural Language :: English",
+]
+readme = "README.md"
+keywords = ["utils", "trd_utils", "basic-utils", "common-utils"]
+homepage = "https://github.com/ALiwoto/trd_utils"
+
+[tool.poetry.dependencies]
+python = ">=3.7"
+httpx = ">=0.21.0"
+cryptography = ">=41.0.7"
+
+[tool.poetry.dev-dependencies]
+pytest = ">=7.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
