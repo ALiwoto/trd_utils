@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 
 from .common_utils import do_ultra_ss
-from .bx_types import ZoneModuleListResponse
+from .bx_types import HomePageResponse, HotSearchResponse, QuotationRankResponse, UserFavoriteQuotationResponse, ZoneModuleListResponse
 from ..cipher import AESCipher
 
 PLATFORM_ID_ANDROID = "10"
@@ -101,7 +101,7 @@ class BXUltraClient:
             headers=headers,
             params=params,
         )
-        return response.json()
+        return UserFavoriteQuotationResponse.deserialize(response.json(parse_float=Decimal))
 
     async def get_quotation_rank(self, only_one_position: int = 0, order_flag: int = 0):
         params = {
@@ -114,7 +114,7 @@ class BXUltraClient:
             headers=headers,
             params=params,
         )
-        return response.json()
+        return QuotationRankResponse.deserialize(response.json(parse_float=Decimal))
 
     async def get_hot_search(self, only_one_position: int = 0, biz_type: int = 30):
         params = {
@@ -127,7 +127,7 @@ class BXUltraClient:
             headers=headers,
             params=params,
         )
-        return response.json()
+        return HotSearchResponse.deserialize(response.json(parse_float=Decimal))
 
     async def get_homepage(self, only_one_position: int = 0, biz_type: int = 30):
         params = {
@@ -140,7 +140,7 @@ class BXUltraClient:
             headers=headers,
             params=params,
         )
-        return response.json()
+        return HomePageResponse.deserialize(response.json(parse_float=Decimal))
 
     async def get_assets_info(self):
         headers = self.get_headers()

@@ -1,5 +1,6 @@
 import json
 from typing import (
+    Optional,
     Union,
     get_type_hints,
     Any,
@@ -85,6 +86,23 @@ class BaseModel:
                     annotations[corrected_key] = Any
             
             expected_type = annotations[corrected_key]
+            if hasattr(self, "_get_" + corrected_key + "_type"):
+                try:
+                    overridden_type = getattr(self, "_get_" + corrected_key + "_type")(kwargs)
+                    if overridden_type:
+                        expected_type = overridden_type
+                except Exception:
+                    pass
+            
+            is_optional_type = getattr(expected_type, '_name', None) == 'Optional'
+            # maybe in the future we can have some other usages for is_optional_type
+            # variable or something like that.
+            if is_optional_type:
+                try:
+                    expected_type = get_type_args(expected_type)[0]
+                except Exception:
+                    # something went wrong, just ignore and continue
+                    expected_type = Any
             
             # Handle nested models
             if isinstance(value, dict) and issubclass(expected_type, BaseModel):
