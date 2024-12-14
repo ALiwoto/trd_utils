@@ -5,6 +5,8 @@
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
     "cSpell.words": [
+        "Elon",
+        "okhttp",
         "referer"
     ]
 }

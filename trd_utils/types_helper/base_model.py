@@ -111,7 +111,9 @@ class BaseModel:
             elif isinstance(value, list):
                 type_args = get_type_args(expected_type)
                 if not type_args:
-                    value = expected_type(value)
+                    # if it's Any, it means we shouldn't really care about the type
+                    if expected_type != Any:
+                        value = expected_type(value)
                 else:
                     # Handle list of nested models
                     nested_type = type_args[0]

@@ -8,6 +8,85 @@ from trd_utils.types_helper import base_model
 base_model.ULTRA_LIST_ENABLED = True
 
 @pytest.mark.asyncio
+async def test_bx_search_copy_trade():
+    client = BXUltraClient()
+
+    result = await client.search_copy_traders(nick_name="Bitcoin2024")
+
+    assert result is not None
+    assert result.code == 0
+    assert result.data is not None
+
+    print("Search results: ")
+    for current_trader in result.data.result:
+        print(f" - {current_trader}")
+    
+    # get the first trader's positions
+    if result.data.result:
+        first_trader = result.data.result[0]
+        trader_positions = await client.get_copy_trade_trader_positions(
+            uid=first_trader.get_uid(),
+            api_identity=first_trader.get_api_identity(),
+        )
+
+        print(f"Trader {first_trader.get_nick_name()}'s positions: ")
+        for current_position in trader_positions.data.positions:
+            print(f" - {current_position}")
+
+    await client.aclose()
+
+@pytest.mark.asyncio
+async def test_bx_get_copy_trade_trader_positions():
+    client = BXUltraClient()
+
+    result = await client.get_copy_trade_trader_positions(
+        uid=1139467159170899972,
+        api_identity=1146548274759884800,
+        # uid=1139467159170900000,
+        # api_identity=1146548274759884800,
+    )
+
+    assert result is not None
+    assert result.code == 0
+    assert result.data is not None
+
+    print("User's positions: ")
+    for current_position in result.data.positions:
+        print(f" - {current_position}")
+
+    await client.aclose()
+
+@pytest.mark.asyncio
+async def test_bx_get_hint_list():
+    client = BXUltraClient()
+
+    result = await client.get_hint_list()
+
+    assert result is not None
+    assert result.code == 0
+    assert result.data is not None
+
+    print("hints:")
+    for current_hint in result.data:
+        print(f" - {current_hint}")
+
+    await client.aclose()
+
+@pytest.mark.asyncio
+async def test_bx_get_zendesk_ab_status():
+    client = BXUltraClient()
+
+    result = await client.get_zendesk_ab_status()
+
+    assert result is not None
+    assert result.code == 0
+    assert result.data is not None
+
+    print(f"ab status: {result.data.ab_status}")
+
+    await client.aclose()
+
+@pytest.mark.asyncio
 async def test_bx_get_zone_module_info():
     client = BXUltraClient()
 

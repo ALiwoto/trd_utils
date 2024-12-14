@@ -40,7 +40,7 @@ def do_ultra_ss(
         payload_data = "{}"
     elif not isinstance(payload_data, str):
         # convert to json
-        payload_data = json.dumps(payload_data, separators=(',', ':'))
+        payload_data = json.dumps(payload_data, separators=(",", ":"), sort_keys=True)
 
     if not trace_id:
         trace_id = uuid.uuid4().hex.replace("-", "")

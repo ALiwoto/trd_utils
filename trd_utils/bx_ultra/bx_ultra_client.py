@@ -1,4 +1,4 @@
-"""BingxUltra exchange subclass"""
+"""BxUltra exchange subclass"""
 
 from decimal import Decimal
 import json
@@ -11,11 +11,23 @@ import time
 from pathlib import Path
 
 from .common_utils import do_ultra_ss
-from .bx_types import HomePageResponse, HotSearchResponse, QuotationRankResponse, UserFavoriteQuotationResponse, ZoneModuleListResponse
+from .bx_types import (
+    CopyTraderTradePositionsResponse,
+    HintListResponse,
+    HomePageResponse,
+    HotSearchResponse,
+    QuotationRankResponse,
+    SearchCopyTraderCondition,
+    SearchCopyTradersResponse,
+    UserFavoriteQuotationResponse,
+    ZenDeskABStatusResponse,
+    ZoneModuleListResponse,
+)
 from ..cipher import AESCipher
 
 PLATFORM_ID_ANDROID = "10"
 PLATFORM_ID_WEB = "30"
+PLATFORM_ID_TG = "100"
 
 ANDROID_DEVICE_BRAND = "SM-N976N"
 WEB_DEVICE_BRAND = "Windows 10_Chrome_127.0.0.0"
@@ -27,8 +39,13 @@ logger = logging.getLogger(__name__)
 
 
 class BXUltraClient:
+    ###########################################################
+    # region client parameters
     we_api_base_host: str = "\u0061pi-\u0061pp.w\u0065-\u0061pi.com"
     we_api_base_url: str = "https://\u0061pi-\u0061pp.w\u0065-\u0061pi.com/\u0061pi"
+
+    qq_os_base_host: str = "https://api-app.qq-os.com"
+    qq_os_base_url: str = "https://api-app.qq-os.com/api"
 
     device_id: str = None
     trace_id: str = None
@@ -36,8 +53,10 @@ class BXUltraClient:
     platform_id: str = "10"
     install_channel: str = "officialAPK"
     channel_header: str = "officialAPK"
+    origin_header: str = "https://bingx.com"
     authorization_token: str = None
     app_id: str = "30004"
+    main_app_id: str = "10009"
     trade_env: str = "real"
     timezone: str = "3"
     os_version: str = "7.1.2"
@@ -45,11 +64,15 @@ class BXUltraClient:
     platform_lang: str = "en"
     sys_lang: str = "en"
     user_agent: str = "okhttp/4.12.0"
+    x_requested_with: str = None
     httpx_client: httpx.AsyncClient = None
     account_name: str = "default"
 
     _fav_letter: str = "^"
 
+    # endregion
+    ###########################################################
+    # region client constructor
     def __init__(
         self,
         account_name: str = "default",
@@ -65,10 +88,11 @@ class BXUltraClient:
 
         self.read_from_session_file(f"{self.account_name}.bx")
 
+    # endregion
+    ###########################################################
+    # region api/coin/v1
     async def get_zone_module_info(
-        self,
-        only_one_position: int = 0,
-        biz_type: int = 10
+        self, only_one_position: int = 0, biz_type: int = 10
     ) -> ZoneModuleListResponse:
         """
         Fetches and returns zone module info from the API.
@@ -101,7 +125,9 @@ class BXUltraClient:
             headers=headers,
             params=params,
         )
-        return UserFavoriteQuotationResponse.deserialize(response.json(parse_float=Decimal))
+        return UserFavoriteQuotationResponse.deserialize(
+            response.json(parse_float=Decimal)
+        )
 
     async def get_quotation_rank(self, only_one_position: int = 0, order_flag: int = 0):
         params = {
@@ -142,6 +168,31 @@ class BXUltraClient:
         )
         return HomePageResponse.deserialize(response.json(parse_float=Decimal))
 
+    # endregion
+    ###########################################################
+    # region api/customer/v1
+    async def get_zendesk_ab_status(self):
+        headers = self.get_headers()
+        response = await self.httpx_client.get(
+            f"{self.we_api_base_url}/customer/v1/zendesk/ab-status",
+            headers=headers,
+        )
+        return ZenDeskABStatusResponse.deserialize(response.json(parse_float=Decimal))
+
+    # endregion
+    ###########################################################
+    # region api/platform-tool/v1
+    async def get_hint_list(self) -> HintListResponse:
+        headers = self.get_headers()
+        response = await self.httpx_client.get(
+            f"{self.we_api_base_url}/platform-tool/v1/hint/list",
+            headers=headers,
+        )
+        return HintListResponse.deserialize(response.json(parse_float=Decimal))
+
+    # endregion
+    ###########################################################
+    # region api/asset-manager/v1
     async def get_assets_info(self):
         headers = self.get_headers()
         headers["Authorization"] = f"Bearer {self.authorization_token}"
@@ -151,14 +202,85 @@ class BXUltraClient:
         )
         return response.json()
 
+    # endregion
+    ###########################################################
+    # region copy-trade-facade
+    async def get_copy_trade_trader_positions(
+        self,
+        uid: str,
+        api_identity: str,
+        page_size: int = 20,
+        page_id: int = 0,
+        copy_trade_label_type: int = 1,
+    ) -> CopyTraderTradePositionsResponse:
+        params = {
+            "uid": f"{uid}",
+            "apiIdentity": f"{api_identity}",
+            "pageSize": f"{page_size}",
+            "pageId": f"{page_id}",
+            "copyTradeLabelType": f"{copy_trade_label_type}",
+        }
+        headers = self.get_headers(params)
+        response = await self.httpx_client.get(
+            f"{self.we_api_base_url}/copy-trade-facade/v2/real/trader/positions",
+            headers=headers,
+            params=params,
+        )
+        return CopyTraderTradePositionsResponse.deserialize(
+            response.json(parse_float=Decimal)
+        )
+
+    async def search_copy_traders(
+        self,
+        exchange_id: int = 2,
+        nick_name: str = "",
+        conditions: list[SearchCopyTraderCondition] = None,
+        page_id: int = 0,
+        page_size: int = 20,
+        sort: str = "comprehensive",
+        order: str = "desc",
+    ) -> SearchCopyTradersResponse:
+        params = {
+            "pageId": f"{page_id}",
+            "pageSize": f"{page_size}",
+            "sort": sort,
+            "order": order,
+        }
+        if conditions is None:
+            conditions = [{
+                "key": "exchangeId",
+                "selected": "2",
+                "type": "singleSelect"
+            }]
+        else:
+            conditions = [x.to_dict() for x in conditions]
+
+        payload = {
+            "conditions": conditions,
+            "exchangeId": f"{exchange_id}",
+            "nickName": nick_name,
+        }
+        headers = self.get_headers(payload)
+        response = await self.httpx_client.post(
+            f"{self.we_api_base_url}/v6/copy-trade/search/search",
+            headers=headers,
+            params=params,
+            content=json.dumps(payload, separators=(",", ":"), sort_keys=True),
+        )
+        return SearchCopyTradersResponse.deserialize(
+            response.json(parse_float=Decimal)
+        )
+
+    ###########################################################
+    # region client helper methods
     def get_headers(self, payload=None) -> dict:
         the_timestamp = int(time.time() * 1000)
-        return {
+        the_headers = {
             "Host": self.we_api_base_host,
             "Content-Type": "application/json",
-            "Mainappid": "10009",
+            "Mainappid": self.main_app_id,
             "Accept": "application/json",
-            "Origin": "https://bingx.com",
+            "Origin": self.origin_header,
             "Traceid": self.trace_id,
             "App_version": self.app_version,
             "Platformid": self.platform_id,
@@ -185,7 +307,11 @@ class BXUltraClient:
             # 'Accept-Encoding': 'gzip, deflate',
             "User-Agent": self.user_agent,
             "Connection": "close",
+            "appsiteid": "0",
         }
+        if self.x_requested_with:
+            the_headers["X-Requested-With"] = self.x_requested_with
+        return the_headers
 
     async def aclose(self) -> None:
         await self.httpx_client.aclose()
@@ -253,3 +379,6 @@ class BXUltraClient:
         aes = AESCipher(key=f"bx_{self.account_name}_bx", fav_letter=self._fav_letter)
         target_path = Path(file_path)
         target_path.write_text(aes.encrypt(json.dumps(json_data)))
+
+    # endregion
+    ###########################################################
