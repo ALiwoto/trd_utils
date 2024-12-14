@@ -333,6 +333,8 @@ class HintListResponse(BxApiResponse):
 
 ###########################################################
 
+#region CopyTrading types
+
 
 class CopyTradingSymbolConfigInfo(BaseModel):
     price_precision: int = None
@@ -535,3 +537,43 @@ class SearchCopyTradersResult(BaseModel):
 
 class SearchCopyTradersResponse(BxApiResponse):
     data: SearchCopyTradersResult = None
+
+
+#endregion
+
+###########################################################
+
+
+class TotalAssetsInfo(BaseModel):
+    amount: Any = None  # unknown
+    currency_amount: Decimal = None
+    sign: str = None
+
+    def __str__(self):
+        return f"{self.currency_amount.quantize(default_quantize)} {self.sign}"
+    
+    def __repr__(self):
+        return self.__str__()
+
+class AccountOverviewItem(BaseModel):
+    account_name: str = None
+    account_type: int = None
+    total: TotalAssetsInfo = None  # unknown
+    schema: str = None
+    order: int = None
+
+    def __str__(self):
+        return f"{self.account_name} ({self.account_type}): {self.total}"
+
+class AssetsInfoResult(BaseModel):
+    total: TotalAssetsInfo = None
+    account_overviews: list[AccountOverviewItem] = None
+    recharge: int = None
+    withdraw: int = None
+    transfer: int = None
+    exchange: int = None
+    fault_flag: int = None
+    fault_accounts: Any = None  # unknown
+
+class AssetsInfoResponse(BxApiResponse):
+    data: AssetsInfoResult = None

@@ -8,7 +8,17 @@ from trd_utils.types_helper import base_model
 base_model.ULTRA_LIST_ENABLED = True
 
 @pytest.mark.asyncio
-async def test_bx_search_copy_trade():
+async def test_bx_do_daily_check_in():
+    client = BXUltraClient()
+
+    # not working
+    await client.do_daily_check_in()
+
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_bx_search_copy_traders():
     client = BXUltraClient()
 
     result = await client.search_copy_traders(nick_name="Bitcoin2024")
@@ -173,7 +183,9 @@ async def test_bx_get_assets_info():
     result = await client.get_assets_info()
 
     assert result is not None
-    assert result["code"] == 0
+    assert result.code == 0
+
+    print(f"Total amount: {result.data.total}")
 
     await client.aclose()
 

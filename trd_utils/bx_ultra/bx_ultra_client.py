@@ -12,6 +12,7 @@ from pathlib import Path
 
 from .common_utils import do_ultra_ss
 from .bx_types import (
+    AssetsInfoResponse,
     CopyTraderTradePositionsResponse,
     HintListResponse,
     HomePageResponse,
@@ -45,6 +46,8 @@ class BXUltraClient:
     # region client parameters
     we_api_base_host: str = "\u0061pi-\u0061pp.w\u0065-\u0061pi.com"
     we_api_base_url: str = "https://\u0061pi-\u0061pp.w\u0065-\u0061pi.com/\u0061pi"
+
+    original_base_host: str = "https://\u0062ing\u0078.co\u006d"
 
     qq_os_base_host: str = "https://\u0061pi-\u0061pp.\u0071\u0071-os.com"
     qq_os_base_url: str = "https://\u0061pi-\u0061pp.\u0071\u0071-os.com/\u0061pi"
@@ -84,7 +87,9 @@ class BXUltraClient:
         http_verify: bool = True,
         fav_letter: str = "^",
     ):
-        self.httpx_client = httpx.AsyncClient(verify=http_verify)
+        self.httpx_client = httpx.AsyncClient(
+            verify=http_verify, http2=True, http1=False
+        )
         self.account_name = account_name
         self.platform_id = platform_id
         self.device_brand = device_brand
@@ -198,14 +203,13 @@ class BXUltraClient:
     # endregion
     ###########################################################
     # region api/asset-manager/v1
-    async def get_assets_info(self):
-        headers = self.get_headers()
-        headers["Authorization"] = f"Bearer {self.authorization_token}"
+    async def get_assets_info(self) -> AssetsInfoResponse:
+        headers = self.get_headers(needs_auth=True)
         response = await self.httpx_client.get(
             f"{self.we_api_base_url}/asset-manager/v1/assets/account-total-overview",
             headers=headers,
         )
-        return response.json()
+        return AssetsInfoResponse.deserialize(response.json(parse_float=Decimal))
 
     # endregion
     ###########################################################
@@ -252,11 +256,9 @@ class BXUltraClient:
             "order": order,
         }
         if conditions is None:
-            conditions = [{
-                "key": "exchangeId",
-                "selected": "2",
-                "type": "singleSelect"
-            }]
+            conditions = [
+                {"key": "exchangeId", "selected": "2", "type": "singleSelect"}
+            ]
         else:
             conditions = [x.to_dict() for x in conditions]
 
@@ -272,13 +274,23 @@ class BXUltraClient:
             params=params,
             content=json.dumps(payload, separators=(",", ":"), sort_keys=True),
         )
-        return SearchCopyTradersResponse.deserialize(
-            response.json(parse_float=Decimal)
-        )
+        return SearchCopyTradersResponse.deserialize(response.json(parse_float=Decimal))
 
     ###########################################################
+    # region welfare
+    async def do_daily_check_in(self):
+        headers = self.get_headers(needs_auth=True)
+        response = await self.httpx_client.post(
+            f"{self.original_base_host}/api/act-operation/v1/welfare/sign-in/do",
+            headers=headers,
+            content="",
+        )
+        return response.json()
+
+    # endregion
+    ###########################################################
     # region client helper methods
-    def get_headers(self, payload=None) -> dict:
+    def get_headers(self, payload=None, needs_auth: bool = False) -> dict:
         the_timestamp = int(time.time() * 1000)
         the_headers = {
             "Host": self.we_api_base_host,
@@ -314,8 +326,12 @@ class BXUltraClient:
             "Connection": "close",
             "appsiteid": "0",
         }
+
         if self.x_requested_with:
             the_headers["X-Requested-With"] = self.x_requested_with
+
+        if needs_auth:
+            the_headers["Authorization"] = f"Bearer {self.authorization_token}"
         return the_headers
 
     async def aclose(self) -> None:
