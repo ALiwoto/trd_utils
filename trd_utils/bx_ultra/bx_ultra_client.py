@@ -31,9 +31,11 @@ PLATFORM_ID_TG = "100"
 
 ANDROID_DEVICE_BRAND = "SM-N976N"
 WEB_DEVICE_BRAND = "Windows 10_Chrome_127.0.0.0"
+EDGE_DEVICE_BRAND = "Windows 10_Edge_131.0.0.0"
 
 ANDROID_APP_VERSION = "4.28.3"
 WEB_APP_VERSION = "4.78.12"
+TG_APP_VERSION = "5.0.15"
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +46,8 @@ class BXUltraClient:
     we_api_base_host: str = "\u0061pi-\u0061pp.w\u0065-\u0061pi.com"
     we_api_base_url: str = "https://\u0061pi-\u0061pp.w\u0065-\u0061pi.com/\u0061pi"
 
-    qq_os_base_host: str = "https://api-app.qq-os.com"
-    qq_os_base_url: str = "https://api-app.qq-os.com/api"
+    qq_os_base_host: str = "https://\u0061pi-\u0061pp.\u0071\u0071-os.com"
+    qq_os_base_url: str = "https://\u0061pi-\u0061pp.\u0071\u0071-os.com/\u0061pi"
 
     device_id: str = None
     trace_id: str = None
@@ -53,7 +55,7 @@ class BXUltraClient:
     platform_id: str = "10"
     install_channel: str = "officialAPK"
     channel_header: str = "officialAPK"
-    origin_header: str = "https://bingx.com"
+    origin_header: str = "https://\u0062ing\u0078.co\u006d"
     authorization_token: str = None
     app_id: str = "30004"
     main_app_id: str = "10009"
@@ -79,12 +81,15 @@ class BXUltraClient:
         platform_id: str = PLATFORM_ID_ANDROID,
         device_brand: str = ANDROID_DEVICE_BRAND,
         app_version: str = ANDROID_APP_VERSION,
+        http_verify: bool = True,
+        fav_letter: str = "^",
     ):
-        self.httpx_client = httpx.AsyncClient(verify=False)
+        self.httpx_client = httpx.AsyncClient(verify=http_verify)
         self.account_name = account_name
         self.platform_id = platform_id
         self.device_brand = device_brand
         self.app_version = app_version
+        self._fav_letter = fav_letter
 
         self.read_from_session_file(f"{self.account_name}.bx")
 
