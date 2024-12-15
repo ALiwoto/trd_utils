@@ -13,6 +13,7 @@ from pathlib import Path
 from .common_utils import do_ultra_ss
 from .bx_types import (
     AssetsInfoResponse,
+    ContractsListResponse,
     CopyTraderTradePositionsResponse,
     HintListResponse,
     HomePageResponse,
@@ -180,7 +181,7 @@ class BXUltraClient:
 
     # endregion
     ###########################################################
-    # region api/customer/v1
+    # region customer
     async def get_zendesk_ab_status(self):
         headers = self.get_headers()
         response = await self.httpx_client.get(
@@ -191,7 +192,7 @@ class BXUltraClient:
 
     # endregion
     ###########################################################
-    # region api/platform-tool/v1
+    # region platform-tool
     async def get_hint_list(self) -> HintListResponse:
         headers = self.get_headers()
         response = await self.httpx_client.get(
@@ -202,7 +203,7 @@ class BXUltraClient:
 
     # endregion
     ###########################################################
-    # region api/asset-manager/v1
+    # region asset-manager
     async def get_assets_info(self) -> AssetsInfoResponse:
         headers = self.get_headers(needs_auth=True)
         response = await self.httpx_client.get(
@@ -210,6 +211,35 @@ class BXUltraClient:
             headers=headers,
         )
         return AssetsInfoResponse.deserialize(response.json(parse_float=Decimal))
+
+    # endregion
+    ###########################################################
+    # region contract
+    async def get_contract_list(
+        self,
+        quotation_coin_id: int = -1,
+        margin_type: int = -1,
+        page_size: int = 20,
+        page_id: int = 0,
+        margin_coin_name: str = "",
+        create_type: str = -1,
+    ) -> ContractsListResponse:
+        params = {
+            "quotationCoinId": f"{quotation_coin_id}",
+            "marginType": f"{margin_type}",
+            "pageSize": f"{page_size}",
+            "pageId": f"{page_id}",
+            "createType": f"{create_type}",
+        }
+        if margin_coin_name:
+            params["marginCoinName"] = margin_coin_name
+        headers = self.get_headers(params, needs_auth=True)
+        response = await self.httpx_client.get(
+            f"{self.we_api_base_url}/v4/contract/order/hold",
+            headers=headers,
+            params=params,
+        )
+        return ContractsListResponse.deserialize(response.json(parse_float=Decimal))
 
     # endregion
     ###########################################################
@@ -276,6 +306,7 @@ class BXUltraClient:
         )
         return SearchCopyTradersResponse.deserialize(response.json(parse_float=Decimal))
 
+    # endregion
     ###########################################################
     # region welfare
     async def do_daily_check_in(self):

@@ -8,6 +8,26 @@ from trd_utils.types_helper import base_model
 base_model.ULTRA_LIST_ENABLED = True
 
 @pytest.mark.asyncio
+async def test_bx_get_contract_lists():
+    client = BXUltraClient()
+
+    result = await client.get_contract_list()
+
+    assert result is not None
+    assert result.code == 0
+    assert result.data is not None
+
+    print("Margin Status: ")
+    for current_stat in result.data.margin_stats:
+        print(f" - {current_stat.margin_coin_name}: {current_stat.total} positions open")
+
+    # print("Contracts: ")
+    # for current_contract in result.data:
+    #     print(f" - {current_contract}")
+
+    await client.aclose()
+
+@pytest.mark.asyncio
 async def test_bx_do_daily_check_in():
     client = BXUltraClient()
 

@@ -543,6 +543,7 @@ class SearchCopyTradersResponse(BxApiResponse):
 
 ###########################################################
 
+# region Account Assets types
 
 class TotalAssetsInfo(BaseModel):
     amount: Any = None  # unknown
@@ -577,3 +578,123 @@ class AssetsInfoResult(BaseModel):
 
 class AssetsInfoResponse(BxApiResponse):
     data: AssetsInfoResult = None
+
+# endregion
+
+###########################################################
+
+# region Contracts types
+
+class BasicCoinInfo(BaseModel):
+    name: str = None
+
+    def __str__(self):
+        return f"{self.name} CoinInfo"
+    
+    def __repr__(self):
+        return self.__str__()
+
+class QuotationCoinVOInfo(BaseModel):
+    id: int = None
+    coin: BasicCoinInfo = None
+    valuation_coin: BasicCoinInfo = None
+    precision: int = None
+    name: str = None
+    market_status: int = None
+
+class OrderDebitInfo(BaseModel):
+    lend_coin: BasicCoinInfo = None
+    amount: Decimal = None
+
+class OrderOpenTradeInfo(BaseModel):
+    traded_amount: Decimal = None
+    traded_cash_amount: Decimal = None
+
+class ContractOrderStatus(BaseModel):
+    code: int = None
+    value: str = None
+
+
+class ContractTakeProfitInfo(BaseModel):
+    id: int = None
+
+    # this is id of the contract that this take-profit info belongs to.
+    order_no: int = None
+    margin_coin_name: str = None
+    type: int = None
+    margin: Decimal = None
+    stop_rate: Decimal = None
+    stop_price: Decimal = None
+    close_style: int = None
+    all_close: bool = None
+
+class ContractStopLossInfo(BaseModel):
+    pass
+
+class ProfitLossInfoContainer(BaseModel):
+    loss_nums: int = None
+    profit_nums: int = None
+    profit_margin: Decimal = None
+    loss_margin: Decimal = None
+    profit_config: ContractTakeProfitInfo = None
+    loss_config: ContractStopLossInfo = None
+
+class ContractOrderInfo(BaseModel):
+    order_no: int = None
+    quotation_coin_vo: QuotationCoinVOInfo = None
+    margin: Decimal = None
+    margin_coin_name: str = None
+    lever_times: Decimal = None
+    display_lever_times: Decimal = None
+    amount: Decimal = None # margin * lever_times
+    display_price: Decimal = None
+    display_close_price: Decimal = None
+    order_type: int = None
+    close_type: int = None
+    status: ContractOrderStatus = None
+    open_date: str = None
+    fees: Decimal = None
+    lever_fee: Decimal = None
+    name: str = None
+    order_create_type: int = None
+    hide_price: bool = None
+    fee_rate: Decimal = None
+    hide: int = None
+    liquidation_desc: str = None
+    contract_account_mode: int = None
+    current_price: Decimal = None
+    sys_force_price: Decimal = None
+    fund_type: int = None
+    interest: Decimal = None
+    order_open_trade: OrderOpenTradeInfo = None
+    order_debit: OrderDebitInfo = None
+    open_rate: Decimal = None
+    close_rate: Decimal = None
+    market_status: int = None
+    create_time: str = None
+    coupon_amount: Decimal = None
+    stop_profit_modify_time: str = None
+    stop_loss_modify_time: str = None
+    show_adjust_margin: int = None
+    trailing_stop: Decimal = None
+    trailing_close_price: Decimal = None
+    stop_rate: Decimal = None
+    profit_loss_info: ProfitLossInfoContainer = None
+    configs: Any = None  # just dictionaries of take-profit and stop-loss configs.
+    stop_offset_rate: Decimal = None
+
+class MarginStatInfo(BaseModel):
+    name: str = None
+    margin_coin_name: str = None
+    margin_type: int = None
+
+    # total count of open contract orders in this margin-type.
+    total: int = None
+
+class ContractsListResult(BaseModel):
+    orders: list[ContractOrderInfo] = None
+    page_id: int = None
+    margin_stats: list[MarginStatInfo] = None
+
+class ContractsListResponse(BxApiResponse):
+    data: ContractsListResult = None
