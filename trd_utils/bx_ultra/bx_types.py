@@ -137,6 +137,12 @@ class HotSearchItem(BaseModel):
     val_coin_name: str = None
     weight: int = None
 
+    def __str__(self):
+        return f"{self.coin_name} ({self.symbol})"
+    
+    def __repr__(self):
+        return f"{self.coin_name} ({self.symbol})"
+
 
 class HotSearchResult(BaseModel):
     result: list[HotSearchItem] = None
@@ -147,6 +153,19 @@ class HotSearchResult(BaseModel):
 
 class HotSearchResponse(BxApiResponse):
     data: HotSearchResult = None
+
+    def __str__(self):
+        if not self.data:
+            return "HotSearchResponse: No data"
+        
+        str_result = "HotSearchResponse: \n"
+        for current_item in self.data.result:
+            str_result += f" - {current_item}\n"
+        
+        return str_result
+    
+    def __repr__(self):
+        return self.__str__()
 
 
 # endregion
