@@ -1,4 +1,5 @@
 import pytest
+import asyncio
 
 from trd_utils.bx_ultra.bx_ultra_client import BXUltraClient
 
@@ -11,7 +12,8 @@ base_model.ULTRA_LIST_ENABLED = True
 async def test_bx_get_contract_lists():
     client = BXUltraClient()
 
-    result = await client.get_contract_list()
+    result = await client.get_contract_list(page_id=0, page_size=1)
+    per_page_size = 10
 
     assert result is not None
     assert result.code == 0
@@ -20,10 +22,19 @@ async def test_bx_get_contract_lists():
     print("Margin Status: ")
     for current_stat in result.data.margin_stats:
         print(f" - {current_stat.margin_coin_name}: {current_stat.total} positions open")
-
-    # print("Contracts: ")
-    # for current_contract in result.data:
-    #     print(f" - {current_contract}")
+        total_fetched = 0
+        while total_fetched < current_stat.total:
+            current_page = total_fetched // per_page_size
+            result = await client.get_contract_list(
+                page_id=current_page,
+                page_size=per_page_size,
+                margin_coin_name=current_stat.margin_coin_name,
+            )
+            for current_contract in result.data.orders:
+                print(f" - {current_contract}")
+            
+            await asyncio.sleep(1) # prevent rate limiting
+            total_fetched += per_page_size
 
     await client.aclose()
 

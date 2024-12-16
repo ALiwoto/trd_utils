@@ -2,7 +2,15 @@ from typing import Any, Optional
 from ..types_helper import BaseModel
 from decimal import Decimal
 
-default_quantize = Decimal("1.00")
+from .common_utils import (
+    dec_to_str,
+    dec_to_normalize,
+)
+
+ORDER_TYPES_MAP = {
+    0: "LONG",
+    1: "SHORT",
+}
 
 
 class BxApiResponse(BaseModel):
@@ -383,12 +391,12 @@ class CopyTraderPositionInfo(BaseModel):
     def __str__(self):
         return (
             f"{self.coin_name} / {self.valuation_coin_name} {self.position_side} "
-            + f"{self.leverage.quantize(default_quantize)}x "
-            + f"vol: {self.volume.quantize(default_quantize)}; "
-            + f"price: {self.avg_price.quantize(default_quantize)}; "
-            + f"margin: {self.margin.quantize(default_quantize)}; "
-            + f"pnl: {self.unrealized_pnl.quantize(default_quantize)}; "
-            + f"ROI: {(self.position_earning_rate * 100).quantize(default_quantize)}%"
+            + f"{dec_to_str(self.leverage)}x "
+            + f"vol: {dec_to_str(self.volume)}; "
+            + f"price: {dec_to_normalize(self.avg_price)}; "
+            + f"margin: {dec_to_str(self.margin)}; "
+            + f"unrealized-PnL: {dec_to_str(self.unrealized_pnl)}; "
+            + f"ROI: {dec_to_str((self.position_earning_rate * 100))}%"
         )
 
     def __repr__(self):
@@ -570,7 +578,7 @@ class TotalAssetsInfo(BaseModel):
     sign: str = None
 
     def __str__(self):
-        return f"{self.currency_amount.quantize(default_quantize)} {self.sign}"
+        return f"{dec_to_str(self.currency_amount)} {self.sign}"
     
     def __repr__(self):
         return self.__str__()
@@ -648,7 +656,17 @@ class ContractTakeProfitInfo(BaseModel):
     all_close: bool = None
 
 class ContractStopLossInfo(BaseModel):
-    pass
+    id: int = None
+
+    # this is id of the contract that this take-profit info belongs to.
+    order_no: int = None
+    margin_coin_name: str = None
+    type: int = None
+    margin: Decimal = None
+    stop_rate: Decimal = None
+    stop_price: Decimal = None
+    close_style: int = None
+    all_close: bool = None
 
 class ProfitLossInfoContainer(BaseModel):
     loss_nums: int = None
@@ -701,6 +719,54 @@ class ContractOrderInfo(BaseModel):
     profit_loss_info: ProfitLossInfoContainer = None
     configs: Any = None  # just dictionaries of take-profit and stop-loss configs.
     stop_offset_rate: Decimal = None
+
+    def is_long(self) -> bool:
+        return self.order_type == 0
+
+    def get_open_price(self) -> Decimal:
+        return self.display_price
+    
+    def get_liquidation_price(self) -> Decimal:
+        return self.sys_force_price
+    
+    def get_profit_str(self) -> str:
+        profit_or_loss = self.current_price - self.display_price
+        profit_percentage = (profit_or_loss / self.display_price) * 100
+        profit_percentage *= 1 if self.is_long() else -1
+        return dec_to_str(profit_percentage * self.lever_times)
+
+    def to_str(self, separator: str = "; ") -> str:
+        result_str = f"{self.name} ({self.order_no}) "
+        result_str += f"{ORDER_TYPES_MAP[self.order_type]} "
+        result_str += f"{dec_to_str(self.lever_times)}x{separator}"
+        result_str += f"margin: {dec_to_str(self.margin)} "
+        result_str += f"{self.margin_coin_name}{separator}"
+
+        if self.profit_loss_info:
+            if self.profit_loss_info.profit_config:
+                tp_config = self.profit_loss_info.profit_config
+                result_str += f"TP: {dec_to_normalize(tp_config.stop_price)} "
+                result_str += f"{tp_config.margin_coin_name}{separator}"
+            if self.profit_loss_info.loss_config:
+                sl_config = self.profit_loss_info.loss_config
+                result_str += f"SL: {dec_to_normalize(sl_config.stop_price)}"
+                result_str += f"{sl_config.margin_coin_name}{separator}"
+        
+        if self.sys_force_price:
+            result_str += f"liquidation: {dec_to_normalize(self.sys_force_price)}{separator}"
+        
+        result_str += f"current price: {dec_to_normalize(self.current_price)}{separator}"
+        
+        profit_str = self.get_profit_str()
+        result_str += f"profit: {profit_str}%"
+
+        return result_str
+
+    def __str__(self):
+        return self.to_str()
+    
+    def __repr__(self):
+        return self.to_str()
 
 class MarginStatInfo(BaseModel):
     name: str = None

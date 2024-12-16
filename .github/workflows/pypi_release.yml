@@ -11,10 +11,10 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.x"
 
@@ -38,12 +38,12 @@ jobs:
           echo "CURRENT_LIB_VERSION=$(echo 'v'$final_value)" >> $GITHUB_ENV
       - name: Create GitHub Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: elgohr/Github-Release-Action@v5
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
-          tag_name: ${{ env.CURRENT_LIB_VERSION }}
-          release_name: ${{ env.CURRENT_LIB_VERSION }}
+          tag: ${{ env.CURRENT_LIB_VERSION }}
+          title: ${{ env.CURRENT_LIB_VERSION }}
           draft: false
           prerelease: false
 
@@ -54,11 +54,11 @@ jobs:
           echo "name=$1" >> $GITHUB_ENV
       - name: Upload Release Asset (sdist) to GitHub
         id: upload-release-asset
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/${{ env.name }}
-          asset_name: ${{ env.name }}
-          asset_content_type: application/zip
+          # upload_url: ${{ steps.create_release.outputs.upload_url }}
+          files: dist/${{ env.name }}
+          # asset_name: ${{ env.name }}
+          # asset_content_type: application/zip
