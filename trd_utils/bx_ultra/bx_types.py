@@ -1,6 +1,8 @@
 from typing import Any, Optional
 from ..types_helper import BaseModel
 from decimal import Decimal
+from datetime import datetime, timedelta
+import pytz
 
 from .common_utils import (
     dec_to_str,
@@ -690,6 +692,7 @@ class ContractOrderInfo(BaseModel):
     close_type: int = None
     status: ContractOrderStatus = None
     open_date: str = None
+    close_date: str = None
     fees: Decimal = None
     lever_fee: Decimal = None
     name: str = None
@@ -730,7 +733,8 @@ class ContractOrderInfo(BaseModel):
         return self.sys_force_price
     
     def get_profit_str(self) -> str:
-        profit_or_loss = self.current_price - self.display_price
+        last_price = self.current_price or self.display_close_price
+        profit_or_loss = last_price - self.display_price
         profit_percentage = (profit_or_loss / self.display_price) * 100
         profit_percentage *= 1 if self.is_long() else -1
         return dec_to_str(profit_percentage * self.lever_times)
@@ -755,8 +759,10 @@ class ContractOrderInfo(BaseModel):
         if self.sys_force_price:
             result_str += f"liquidation: {dec_to_normalize(self.sys_force_price)}{separator}"
         
-        result_str += f"current price: {dec_to_normalize(self.current_price)}{separator}"
-        
+        if self.current_price:
+            result_str += f"current price: {dec_to_normalize(self.current_price)}{separator}"
+        elif self.display_close_price:
+            result_str += f"close price: {dec_to_normalize(self.display_close_price)}{separator}"
         profit_str = self.get_profit_str()
         result_str += f"profit: {profit_str}%"
 
@@ -767,6 +773,11 @@ class ContractOrderInfo(BaseModel):
     
     def __repr__(self):
         return self.to_str()
+
+class ClosedContractOrderInfo(ContractOrderInfo):
+    close_type_name: str = None
+    gross_earnings: Decimal = None
+    position_order: int = None
 
 class MarginStatInfo(BaseModel):
     name: str = None
@@ -783,3 +794,87 @@ class ContractsListResult(BaseModel):
 
 class ContractsListResponse(BxApiResponse):
     data: ContractsListResult = None
+
+class ContractOrdersHistoryResult(BaseModel):
+    orders: list[ClosedContractOrderInfo] = None
+    page_id: int = None
+
+class ContractOrdersHistoryResponse(BxApiResponse):
+    data: ContractOrdersHistoryResult = None
+
+    def get_today_earnings(self, timezone: Any = pytz.UTC) -> Decimal:
+        """
+        Returns the total earnings for today.
+        NOTE: This function will return None if there are no orders for today.
+        """
+        found_any_for_today: bool = False
+        today_earnings = Decimal("0.00")
+        today = datetime.now(timezone).date()
+        for current_order in self.data.orders:
+            # check if the date is for today
+            closed_date = datetime.strptime(
+                current_order.close_date,
+                '%Y-%m-%dT%H:%M:%S.%f%z',
+            ).astimezone(timezone).date()
+            if closed_date == today:
+                today_earnings += current_order.gross_earnings
+                found_any_for_today = True
+        
+        if not found_any_for_today:
+            return None
+
+        return today_earnings
+    
+    def get_this_week_earnings(self, timezone: Any = pytz.UTC) -> Decimal:
+        """
+        Returns the total earnings for this week.
+        NOTE: This function will return None if there are no orders for this week.
+        """
+        found_any_for_week: bool = False
+        week_earnings = Decimal("0.00")
+        today = datetime.now(timezone).date()
+        week_start = today - timedelta(days=today.weekday())
+        for current_order in self.data.orders:
+            # check if the date is for this week
+            closed_date = datetime.strptime(
+                current_order.close_date,
+                '%Y-%m-%dT%H:%M:%S.%f%z',
+            ).astimezone(timezone).date()
+            if closed_date >= week_start:
+                week_earnings += current_order.gross_earnings
+                found_any_for_week = True
+        
+        if not found_any_for_week:
+            return None
+
+        return week_earnings
+
+    def get_this_month_earnings(self, timezone: Any = pytz.UTC) -> Decimal:
+        """
+        Returns the total earnings for this month.
+        NOTE: This function will return None if there are no orders for this month.
+        """
+        found_any_for_month: bool = False
+        month_earnings = Decimal("0.00")
+        today = datetime.now(timezone).date()
+        month_start = today.replace(day=1)
+        for current_order in self.data.orders:
+            # check if the date is for this month
+            closed_date = datetime.strptime(
+                current_order.close_date,
+                '%Y-%m-%dT%H:%M:%S.%f%z',
+            ).astimezone(timezone).date()
+            if closed_date >= month_start:
+                month_earnings += current_order.gross_earnings
+                found_any_for_month = True
+        
+        if not found_any_for_month:
+            return None
+
+        return month_earnings
+
+    def get_orders_len(self) -> int:
+        if not self.data or not self.data.orders:
+            return 0
+        return len(self.data.orders)
+        

@@ -1,5 +1,6 @@
 """BxUltra exchange subclass"""
 
+import asyncio
 from decimal import Decimal
 import json
 import logging
@@ -13,6 +14,7 @@ from pathlib import Path
 from .common_utils import do_ultra_ss
 from .bx_types import (
     AssetsInfoResponse,
+    ContractOrdersHistoryResponse,
     ContractsListResponse,
     CopyTraderTradePositionsResponse,
     HintListResponse,
@@ -241,6 +243,136 @@ class BXUltraClient:
         )
         return ContractsListResponse.deserialize(response.json(parse_float=Decimal))
 
+    async def get_contract_order_history(
+        self,
+        fund_type: int = 1,
+        paging_size: int = 10,
+        page_id: int = 0,
+        from_order_no: int = 0,
+        margin_coin_name: str = "USDT",
+        margin_type: int = 0,
+    ) -> ContractOrdersHistoryResponse:
+        params = {
+            "fundType": f"{fund_type}",
+            "pagingSize": f"{paging_size}",
+            "pageId": f"{page_id}",
+            "marginCoinName": margin_coin_name,
+            "marginType": f"{margin_type}",
+        }
+        if from_order_no:
+            params["fromOrderNo"] = f"{from_order_no}"
+
+        headers = self.get_headers(params, needs_auth=True)
+        response = await self.httpx_client.get(
+            f"{self.we_api_base_url}/v2/contract/order/history",
+            headers=headers,
+            params=params,
+        )
+        return ContractOrdersHistoryResponse.deserialize(
+            response.json(parse_float=Decimal)
+        )
+
+    async def get_today_contract_earnings(
+        self,
+        margin_coin_name: str = "USDT",
+        page_size: int = 10,
+        max_total_size: int = 500,
+        delay_per_fetch: float = 1.0,
+    ) -> Decimal:
+        """
+        Fetches today's earnings from the contract orders.
+        NOTE: This method is a bit slow due to the API rate limiting.
+        NOTE: If the user has not opened ANY contract orders today, 
+            this method will return None.
+        """
+        return await self._get_period_contract_earnings(
+            period="day",
+            margin_coin_name=margin_coin_name,
+            page_size=page_size,
+            max_total_size=max_total_size,
+            delay_per_fetch=delay_per_fetch,
+        )
+
+    async def get_this_week_contract_earnings(
+        self,
+        margin_coin_name: str = "USDT",
+        page_size: int = 10,
+        max_total_size: int = 500,
+        delay_per_fetch: float = 1.0,
+    ) -> Decimal:
+        """
+        Fetches this week's earnings from the contract orders.
+        NOTE: This method is a bit slow due to the API rate limiting.
+        NOTE: If the user has not opened ANY contract orders this week, 
+            this method will return None.
+        """
+        return await self._get_period_contract_earnings(
+            period="week",
+            margin_coin_name=margin_coin_name,
+            page_size=page_size,
+            max_total_size=max_total_size,
+            delay_per_fetch=delay_per_fetch,
+        )
+
+    async def get_this_month_contract_earnings(
+        self,
+        margin_coin_name: str = "USDT",
+        page_size: int = 10,
+        max_total_size: int = 500,
+        delay_per_fetch: float = 1.0,
+    ) -> Decimal:
+        """
+        Fetches this month's earnings from the contract orders.
+        NOTE: This method is a bit slow due to the API rate limiting.
+        NOTE: If the user has not opened ANY contract orders this week, 
+            this method will return None.
+        """
+        return await self._get_period_contract_earnings(
+            period="month",
+            margin_coin_name=margin_coin_name,
+            page_size=page_size,
+            max_total_size=max_total_size,
+            delay_per_fetch=delay_per_fetch,
+        )
+
+    async def _get_period_contract_earnings(
+        self,
+        period: str,
+        margin_coin_name: str = "USDT",
+        page_size: int = 10,
+        max_total_size: int = 500,
+        delay_per_fetch: float = 1.0,
+    ) -> Decimal:
+        total_fetched = 0
+        total_earnings = Decimal("0.00")
+        has_earned_any = False
+        while total_fetched < max_total_size:
+            current_page = total_fetched // page_size
+            result = await self.get_contract_order_history(
+                page_id=current_page,
+                paging_size=page_size,
+                margin_coin_name=margin_coin_name,
+            )
+            if period == "day":
+                temp_earnings = result.get_today_earnings()
+            elif period == "week":
+                temp_earnings = result.get_this_week_earnings()
+            elif period == "month":
+                temp_earnings = result.get_this_month_earnings()
+            if temp_earnings is None:
+                # all ended
+                break
+            total_earnings += temp_earnings
+            has_earned_any = True
+            total_fetched += page_size
+            if result.get_orders_len() < page_size:
+                break
+            await asyncio.sleep(delay_per_fetch)
+        
+        if not has_earned_any:
+            return None
+        return total_earnings
+    
     # endregion
     ###########################################################
     # region copy-trade-facade

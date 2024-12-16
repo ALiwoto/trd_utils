@@ -9,6 +9,44 @@ from trd_utils.types_helper import base_model
 base_model.ULTRA_LIST_ENABLED = True
 
 @pytest.mark.asyncio
+async def test_bx_get_earning_amounts():
+    client = BXUltraClient()
+
+    today_earnings = await client.get_today_contract_earnings()
+    print(f"Today's earnings: {today_earnings}")
+
+    this_week_earnings = await client.get_this_week_contract_earnings()
+    print(f"This week's earnings: {this_week_earnings}")
+
+    this_month_earnings = await client.get_this_month_contract_earnings()
+    print(f"This month's earnings: {this_month_earnings}")
+
+    await client.aclose()
+
+@pytest.mark.asyncio
+async def test_bx_get_contract_order_history():
+    client = BXUltraClient()
+
+    result = await client.get_contract_order_history(
+        page_id=0,
+        paging_size=10,
+        margin_coin_name="USDT",
+    )
+
+    assert result is not None
+    assert result.code == 0
+    assert result.data is not None
+
+    print("Order History: ")
+    for current_order in result.data.orders:
+        print(f" - {current_order}")
+    
+    today_earning = result.get_today_earnings()
+    print(f"Today's earnings: {today_earning}")
+
+    await client.aclose()
+
+@pytest.mark.asyncio
 async def test_bx_get_contract_lists():
     client = BXUltraClient()
 
