@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "trd_utils"
-version = "0.0.2"
+version = "0.0.3"
 description = "Common Basic Utils for Python3. By ALiwoto."
 authors = ["ALiwoto <aminnimaj@gmail.com>"]
 packages = [

@@ -24,7 +24,7 @@ jobs:
           python -m build
           twine check --strict dist/*
       - name: Publish distribution to PyPI
-        uses: pypa/gh-action-pypi-publish@master
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
@@ -44,7 +44,7 @@ jobs:
         with:
           tag: ${{ env.CURRENT_LIB_VERSION }}
           title: ${{ env.CURRENT_LIB_VERSION }}
-          draft: false
+          # draft: false
           prerelease: false
 
       - name: Get Asset name
@@ -59,6 +59,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           # upload_url: ${{ steps.create_release.outputs.upload_url }}
+          tag_name: ${{ env.CURRENT_LIB_VERSION }}
           files: dist/${{ env.name }}
           # asset_name: ${{ env.name }}
           # asset_content_type: application/zip
