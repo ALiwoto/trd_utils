@@ -1,3 +1,4 @@
+from decimal import Decimal
 import json
 from typing import (
     Union,
@@ -44,6 +45,85 @@ def get_real_attr(cls, attr_name):
 
 def is_any_type(target_type: type) -> bool:
     return target_type == Any or target_type is type(None)
+
+
+# TODO: add support for max_depth for this...
+def value_to_normal_obj(value):
+    """
+    Converts a custom value, to a corresponding "normal object" which can be used
+    in dict.
+    """
+    if isinstance(value, BaseModel):
+        return value.to_dict()
+
+    if isinstance(value, list):
+        results = []
+        for current in value:
+            results.append(value_to_normal_obj(current))
+        return results
+
+    if isinstance(value, (int, str)) or value is None:
+        return value
+
+    if isinstance(value, Decimal):
+        return str(value)
+
+    if isinstance(value, dict):
+        result = {}
+        for inner_key, inner_value in value.items():
+            result[inner_key] = value_to_normal_obj(inner_value)
+
+        return result
+
+    raise TypeError(f"unsupported type provided: {type(value)}")
+
+
+def generic_obj_to_value(
+    expected_type: type,
+    expected_type_args: tuple[type],
+    value: Any,
+):
+    """
+    Converts a normal JSON-compatible "object" to a customized python value.
+    """
+    if not expected_type_args:
+        expected_type_args = get_type_args(expected_type)
+
+    if isinstance(value, list):
+        result = []
+        for current in value:
+            result.append(generic_obj_to_value(
+                expected_type=expected_type_args[0],
+                expected_type_args=expected_type_args[1:],
+                value=current,
+            ))
+        return result
+
+    expected_type_name = getattr(expected_type, "__name__", None)
+    if expected_type_name == "dict" and isinstance(value, dict):
+        result = {}
+        for inner_key, inner_value in value.items():
+            result[expected_type_args[0](inner_key)] = generic_obj_to_value(
+                expected_type=expected_type_args[1],
+                expected_type_args=expected_type_args[1:],
+                value=inner_value,
+            )
+        return result
+
+    if isinstance(value, dict) and issubclass(expected_type, BaseModel):
+        if len(expected_type_args) > 1:
+            raise ValueError(
+                "unsupported operation: at this time we cannot have"
+                " expected type args at all...",
+            )
+        return expected_type(**value)
+
+    if not expected_type_args:
+        if isinstance(value, expected_type):
+            return value
+        return expected_type(value)
+
+    raise TypeError(f"unsupported type: {type(value)}")
 
 
 class UltraList(list):
@@ -104,31 +184,44 @@ class BaseModel:
                 except Exception:
                     pass
 
-            is_optional_type = getattr(expected_type, "_name", None) == "Optional"
+            expected_type_args = get_type_args(expected_type)
+            expected_type_name = getattr(expected_type, "__name__", None)
+            is_optional_type = expected_type_name == "Optional"
+            is_dict_type = expected_type_name == "dict"
             # maybe in the future we can have some other usages for is_optional_type
             # variable or something like that.
             if is_optional_type:
                 try:
-                    expected_type = get_type_args(expected_type)[0]
+                    expected_type = expected_type_args[0]
                 except Exception:
                     # something went wrong, just ignore and continue
                     expected_type = Any
 
+            if value is None:
+                # just skip...
+                pass
+            elif isinstance(value, dict) and is_dict_type:
+                value = generic_obj_to_value(
+                    expected_type=expected_type,
+                    expected_type_args=expected_type_args,
+                    value=value,
+                )
+
             # Handle nested models
-            if isinstance(value, dict) and issubclass(expected_type, BaseModel):
+            elif isinstance(value, dict) and issubclass(expected_type, BaseModel):
                 value = expected_type(**value)
 
             elif isinstance(value, list):
-                type_args = get_type_args(expected_type)
-                if not type_args:
+                if not expected_type_args:
                     # if it's Any, it means we shouldn't really care about the type
                     if expected_type != Any:
                         value = expected_type(value)
                 else:
-                    # Handle list of nested models
-                    nested_type = type_args[0]
-                    if issubclass(nested_type, BaseModel):
-                        value = [nested_type(**item) for item in value]
+                    value = generic_obj_to_value(
+                        expected_type=expected_type,
+                        expected_type_args=expected_type_args,
+                        value=value,
+                    )
 
                 if ULTRA_LIST_ENABLED and isinstance(value, list):
                     value = convert_to_ultra_list(value)
@@ -159,3 +252,30 @@ class BaseModel:
         else:
             data = json_data
         return cls(**data)
+
+    def serialize(
+        self,
+        separators=(",", ":"),
+        ensure_ascii=True,
+        sort_keys=True,
+    ) -> bytes:
+        return json.dumps(
+            obj=self.to_dict(),
+            ensure_ascii=ensure_ascii,
+            separators=separators,
+            sort_keys=sort_keys,
+        )
+
+    def to_dict(self) -> dict:
+        annotations = get_my_field_types(self)
+        result_dict = {}
+        for key, _ in annotations.items():
+            if not isinstance(key, str):
+                continue
+
+            if key.startswith("__"):
+                # ignore private attributes
+                continue
+
+            result_dict[key] = value_to_normal_obj(getattr(self, key))
+        return result_dict
