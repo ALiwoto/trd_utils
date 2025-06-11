@@ -11,6 +11,8 @@ from trd_utils.exchanges.blofin.blofin_types import (
     BlofinApiResponse,
     CmsColorResponse,
     CopyTraderInfoResponse,
+    CopyTraderOrderHistoryResponse,
+    CopyTraderOrderListResponse,
     ShareConfigResponse,
 )
 from trd_utils.cipher import AESCipher
@@ -37,7 +39,7 @@ class BlofinClient(ExchangeBase):
         http_verify: bool = True,
         fav_letter: str = "^",
         read_session_file: bool = True,
-        sessions_dir: str = "sessions"
+        sessions_dir: str = "sessions",
     ):
         self.httpx_client = httpx.AsyncClient(
             verify=http_verify,
@@ -83,6 +85,44 @@ class BlofinClient(ExchangeBase):
             headers=headers,
             content=payload,
             model=CopyTraderInfoResponse,
+        )
+
+    async def get_copy_trader_order_list(
+        self,
+        from_param: int,
+        limit_param: 0,
+        uid: int,
+    ) -> CopyTraderOrderListResponse:
+        payload = {
+            "from": from_param,
+            "limit": limit_param,
+            "uid": uid,
+        }
+        headers = self.get_headers()
+        return await self.invoke_post(
+            f"{self.blofin_api_base_url}/copy/trader/order/list",
+            headers=headers,
+            content=payload,
+            model=CopyTraderOrderListResponse,
+        )
+    
+    async def get_copy_trader_order_history(
+        self,
+        from_param: int,
+        limit_param: 0,
+        uid: int,
+    ) -> CopyTraderOrderHistoryResponse:
+        payload = {
+            "from": from_param,
+            "limit": limit_param,
+            "uid": uid,
+        }
+        headers = self.get_headers()
+        return await self.invoke_post(
+            f"{self.blofin_api_base_url}/copy/trader/order/history",
+            headers=headers,
+            content=payload,
+            model=CopyTraderOrderHistoryResponse,
         )
 
     # endregion
@@ -140,7 +180,7 @@ class BlofinClient(ExchangeBase):
         """
         Invokes the specific request to the specific url with the specific params and headers.
         """
-        
+
         if isinstance(content, dict):
             content = json.dumps(content, separators=(",", ":"), sort_keys=True)
 

@@ -4,6 +4,7 @@
 # import pytz
 
 from decimal import Decimal
+from typing import Any
 from trd_utils.types_helper import BaseModel
 
 # from trd_utils.common_utils.float_utils import (
@@ -75,5 +76,69 @@ class CopyTraderInfoResult(BaseModel):
     whitelist_copier: bool = None
     win_rate: Decimal = None
 
+    def get_profile_url(self) -> str:
+        return f"https://blofin.com/copy-trade/details/{self.uid}"
+
 class CopyTraderInfoResponse(BlofinApiResponse):
     data: CopyTraderInfoResult = None
+
+class CopyTraderSingleOrderInfo(BaseModel):
+    id: int = None
+    symbol: str = None
+    leverage: int = None
+    order_side: str = None
+    avg_open_price: str = None
+    quantity: str = None
+    quantity_cont: None
+    open_time: int = None
+    close_time: Any = None
+    avg_close_price: Decimal = None
+    real_pnl: Any = None
+    close_type: Any = None
+    roe: Decimal = None
+    followers_profit: Decimal = None
+    followers: Any = None
+    order_id: Any = None
+    sharing: Any = None
+    order_state: None
+    trader_name: None
+    mark_price: None
+    tp_trigger_price: None
+    tp_order_type: None
+    sl_trigger_price: None
+    sl_order_type: None
+    margin_mode: str = None
+    time_in_force: None
+    position_side: str = None
+    order_category: None
+    price: None
+    fill_quantity: None
+    fill_quantity_cont: None
+    pnl: None
+    cancel_source: None
+    order_type: None
+    order_open_state: None
+    amount: None
+    filled_amount: None
+    create_time: None
+    update_time: None
+    open_fee: None
+    close_fee: None
+    id_md5: None
+    tp_sl: None
+    trader_uid: None
+    available_quantity: None
+    available_quantity_cont: None
+    show_in_kline: None
+    unrealized_pnl: None
+    unrealized_pnl_ratio: None
+    broker_id: None
+    position_change_history: None
+    user_id: None
+
+class CopyTraderOrderListResponse(BlofinApiResponse):
+    data: list[CopyTraderSingleOrderInfo] = None
+
+
+class CopyTraderOrderHistoryResponse(BlofinApiResponse):
+    data: list[CopyTraderSingleOrderInfo] = None

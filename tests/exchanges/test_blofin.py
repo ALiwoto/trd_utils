@@ -47,3 +47,36 @@ async def test_blofin_get_copy_trader_info():
     assert result.data is not None
 
     print(f"trader nickname: {result.data.nick_name}")
+
+@pytest.mark.asyncio
+async def test_blofin_get_copy_trader_order_list():
+    client = BlofinClient()
+
+    result = await client.get_copy_trader_order_list(
+        from_param=0,
+        limit_param=20,
+        uid=2897425892,
+    )
+
+    assert result is not None
+    assert result.code == 200
+    assert result.data is not None
+
+    print(f"Orders count: {len(result.data)}")
+
+@pytest.mark.asyncio
+async def test_blofin_get_copy_trader_order_history():
+    client = BlofinClient()
+
+    result = await client.get_copy_trader_order_history(
+        from_param=0,
+        limit_param=20,
+        uid=2897425892,
+    )
+
+    assert result is not None
+    assert result.code == 200
+    assert result.data is not None
+
+    print(f"Orders count: {len(result.data)}")
+
