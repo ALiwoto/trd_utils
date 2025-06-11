@@ -46,7 +46,8 @@ async def test_blofin_get_copy_trader_info():
     assert result.code == 200
     assert result.data is not None
 
-    print(f"trader nickname: {result.data.nick_name}")
+    print(f"  - trader nickname: {result.data.nick_name}")
+    print(f"  - WinRate: {result.data.win_rate}")
 
 @pytest.mark.asyncio
 async def test_blofin_get_copy_trader_order_list():
