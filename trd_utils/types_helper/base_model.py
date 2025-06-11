@@ -48,13 +48,15 @@ def is_any_type(target_type: type) -> bool:
 
 
 # TODO: add support for max_depth for this...
-def value_to_normal_obj(value, omit_none: bool = False,):
+def value_to_normal_obj(value, omit_none: bool = False):
     """
     Converts a custom value, to a corresponding "normal object" which can be used
     in dict.
     """
     if isinstance(value, BaseModel):
-        return value.to_dict()
+        return value.to_dict(
+            omit_none=omit_none,
+        )
 
     if isinstance(value, list):
         results = []
