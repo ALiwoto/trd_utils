@@ -1,6 +1,5 @@
 import json
 from typing import (
-    Optional,
     Union,
     get_type_hints,
     Any,

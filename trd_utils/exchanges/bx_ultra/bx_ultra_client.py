@@ -4,6 +4,7 @@ import asyncio
 from decimal import Decimal
 import json
 import logging
+from typing import Type
 import uuid
 
 import httpx
@@ -26,8 +27,11 @@ from trd_utils.exchanges.bx_ultra.bx_types import (
     UserFavoriteQuotationResponse,
     ZenDeskABStatusResponse,
     ZoneModuleListResponse,
+    BxApiResponse,
 )
 from trd_utils.cipher import AESCipher
+
+from trd_utils.exchanges.exchange_base import ExchangeBase
 
 PLATFORM_ID_ANDROID = "10"
 PLATFORM_ID_WEB = "30"
@@ -44,7 +48,7 @@ TG_APP_VERSION = "5.0.15"
 logger = logging.getLogger(__name__)
 
 
-class BXUltraClient:
+class BXUltraClient(ExchangeBase):
     ###########################################################
     # region client parameters
     we_api_base_host: str = "\u0061pi-\u0061pp.w\u0065-\u0061pi.com"
@@ -71,12 +75,6 @@ class BXUltraClient:
     device_brand: str = "SM-N976N"
     platform_lang: str = "en"
     sys_lang: str = "en"
-    user_agent: str = "okhttp/4.12.0"
-    x_requested_with: str = None
-    httpx_client: httpx.AsyncClient = None
-    account_name: str = "default"
-
-    _fav_letter: str = "^"
 
     # endregion
     ###########################################################
@@ -105,7 +103,9 @@ class BXUltraClient:
     ###########################################################
     # region api/coin/v1
     async def get_zone_module_info(
-        self, only_one_position: int = 0, biz_type: int = 10
+        self,
+        only_one_position: int = 0,
+        biz_type: int = 10,
     ) -> ZoneModuleListResponse:
         """
         Fetches and returns zone module info from the API.
@@ -118,101 +118,113 @@ class BXUltraClient:
         }
         headers = self.get_headers(params)
         headers["Only_one_position"] = f"{only_one_position}"
-        response = await self.httpx_client.get(
+        return await self.invoke_get(
             f"{self.we_api_base_url}/coin/v1/zone/module-info",
             headers=headers,
             params=params,
+            model=ZoneModuleListResponse,
         )
-        return ZoneModuleListResponse.deserialize(response.json(parse_float=Decimal))
 
     async def get_user_favorite_quotation(
-        self, only_one_position: int = 0, biz_type: int = 1
-    ):
+        self,
+        only_one_position: int = 0,
+        biz_type: int = 1,
+    ) -> UserFavoriteQuotationResponse:
         params = {
             "bizType": f"{biz_type}",
         }
         headers = self.get_headers(params)
         headers["Only_one_position"] = f"{only_one_position}"
-        response = await self.httpx_client.get(
+        return await self.invoke_get(
             f"{self.we_api_base_url}/coin/v1/user/favorite/quotation",
             headers=headers,
             params=params,
-        )
-        return UserFavoriteQuotationResponse.deserialize(
-            response.json(parse_float=Decimal)
+            model=UserFavoriteQuotationResponse,
         )
 
-    async def get_quotation_rank(self, only_one_position: int = 0, order_flag: int = 0):
+    async def get_quotation_rank(
+        self,
+        only_one_position: int = 0,
+        order_flag: int = 0,
+    ) -> QuotationRankResponse:
         params = {
             "orderFlag": f"{order_flag}",
         }
         headers = self.get_headers(params)
         headers["Only_one_position"] = f"{only_one_position}"
-        response = await self.httpx_client.get(
+        return await self.invoke_get(
             f"{self.we_api_base_url}/coin/v1/rank/quotation-rank",
             headers=headers,
             params=params,
+            model=QuotationRankResponse,
         )
-        return QuotationRankResponse.deserialize(response.json(parse_float=Decimal))
 
-    async def get_hot_search(self, only_one_position: int = 0, biz_type: int = 30):
+    async def get_hot_search(
+        self,
+        only_one_position: int = 0,
+        biz_type: int = 30,
+    ) -> HotSearchResponse:
         params = {
             "bizType": f"{biz_type}",
         }
         headers = self.get_headers(params)
         headers["Only_one_position"] = f"{only_one_position}"
-        response = await self.httpx_client.get(
+        return await self.invoke_get(
             f"{self.we_api_base_url}/coin/v1/quotation/hot-search",
             headers=headers,
             params=params,
+            model=HotSearchResponse,
         )
-        return HotSearchResponse.deserialize(response.json(parse_float=Decimal))
 
-    async def get_homepage(self, only_one_position: int = 0, biz_type: int = 30):
+    async def get_homepage(
+        self,
+        only_one_position: int = 0,
+        biz_type: int = 30,
+    ) -> HomePageResponse:
         params = {
             "biz-type": f"{biz_type}",
         }
         headers = self.get_headers(params)
         headers["Only_one_position"] = f"{only_one_position}"
-        response = await self.httpx_client.get(
+        return await self.invoke_get(
             f"{self.we_api_base_url}/coin/v1/discovery/homepage",
             headers=headers,
             params=params,
+            model=HomePageResponse,
         )
-        return HomePageResponse.deserialize(response.json(parse_float=Decimal))
 
     # endregion
     ###########################################################
     # region customer
-    async def get_zendesk_ab_status(self):
+    async def get_zendesk_ab_status(self) -> ZenDeskABStatusResponse:
         headers = self.get_headers()
-        response = await self.httpx_client.get(
+        return await self.invoke_get(
             f"{self.we_api_base_url}/customer/v1/zendesk/ab-status",
             headers=headers,
+            model=ZenDeskABStatusResponse,
         )
-        return ZenDeskABStatusResponse.deserialize(response.json(parse_float=Decimal))
 
     # endregion
     ###########################################################
     # region platform-tool
     async def get_hint_list(self) -> HintListResponse:
         headers = self.get_headers()
-        response = await self.httpx_client.get(
+        return await self.invoke_get(
             f"{self.we_api_base_url}/platform-tool/v1/hint/list",
             headers=headers,
+            model=HintListResponse,
         )
-        return HintListResponse.deserialize(response.json(parse_float=Decimal))
 
     # endregion
     ###########################################################
     # region asset-manager
     async def get_assets_info(self) -> AssetsInfoResponse:
         headers = self.get_headers(needs_auth=True)
-        response = await self.httpx_client.get(
+        return await self.invoke_get(
             f"{self.we_api_base_url}/asset-manager/v1/assets/account-total-overview",
             headers=headers,
+            model=AssetsInfoResponse,
         )
-        return AssetsInfoResponse.deserialize(response.json(parse_float=Decimal))
 
     # endregion
     ###########################################################
@@ -236,12 +248,12 @@ class BXUltraClient:
         if margin_coin_name:
             params["marginCoinName"] = margin_coin_name
         headers = self.get_headers(params, needs_auth=True)
-        response = await self.httpx_client.get(
+        return await self.invoke_get(
             f"{self.we_api_base_url}/v4/contract/order/hold",
             headers=headers,
             params=params,
+            model=ContractsListResponse,
         )
-        return ContractsListResponse.deserialize(response.json(parse_float=Decimal))
 
     async def get_contract_order_history(
         self,
@@ -263,13 +275,11 @@ class BXUltraClient:
             params["fromOrderNo"] = f"{from_order_no}"
 
         headers = self.get_headers(params, needs_auth=True)
-        response = await self.httpx_client.get(
+        return await self.invoke_get(
             f"{self.we_api_base_url}/v2/contract/order/history",
             headers=headers,
             params=params,
-        )
-        return ContractOrdersHistoryResponse.deserialize(
-            response.json(parse_float=Decimal)
+            model=ContractOrdersHistoryResponse,
         )
 
     async def get_today_contract_earnings(
@@ -282,7 +292,7 @@ class BXUltraClient:
         """
         Fetches today's earnings from the contract orders.
         NOTE: This method is a bit slow due to the API rate limiting.
-        NOTE: If the user has not opened ANY contract orders today, 
+        NOTE: If the user has not opened ANY contract orders today,
             this method will return None.
         """
         return await self._get_period_contract_earnings(
@@ -303,7 +313,7 @@ class BXUltraClient:
         """
         Fetches this week's earnings from the contract orders.
         NOTE: This method is a bit slow due to the API rate limiting.
-        NOTE: If the user has not opened ANY contract orders this week, 
+        NOTE: If the user has not opened ANY contract orders this week,
             this method will return None.
         """
         return await self._get_period_contract_earnings(
@@ -324,7 +334,7 @@ class BXUltraClient:
         """
         Fetches this month's earnings from the contract orders.
         NOTE: This method is a bit slow due to the API rate limiting.
-        NOTE: If the user has not opened ANY contract orders this week, 
+        NOTE: If the user has not opened ANY contract orders this week,
             this method will return None.
         """
         return await self._get_period_contract_earnings(
@@ -368,11 +378,11 @@ class BXUltraClient:
             if result.get_orders_len() < page_size:
                 break
             await asyncio.sleep(delay_per_fetch)
-        
+
         if not has_earned_any:
             return None
         return total_earnings
-    
+
     # endregion
     ###########################################################
     # region copy-trade-facade
@@ -392,13 +402,11 @@ class BXUltraClient:
             "copyTradeLabelType": f"{copy_trade_label_type}",
         }
         headers = self.get_headers(params)
-        response = await self.httpx_client.get(
+        return await self.invoke_get(
             f"{self.we_api_base_url}/copy-trade-facade/v2/real/trader/positions",
             headers=headers,
             params=params,
-        )
-        return CopyTraderTradePositionsResponse.deserialize(
-            response.json(parse_float=Decimal)
+            model=CopyTraderTradePositionsResponse,
         )
 
     async def search_copy_traders(
@@ -430,25 +438,25 @@ class BXUltraClient:
             "nickName": nick_name,
         }
         headers = self.get_headers(payload)
-        response = await self.httpx_client.post(
+        return await self.invoke_post(
             f"{self.we_api_base_url}/v6/copy-trade/search/search",
             headers=headers,
             params=params,
             content=json.dumps(payload, separators=(",", ":"), sort_keys=True),
+            model=SearchCopyTradersResponse,
         )
-        return SearchCopyTradersResponse.deserialize(response.json(parse_float=Decimal))
 
     # endregion
     ###########################################################
     # region welfare
     async def do_daily_check_in(self):
         headers = self.get_headers(needs_auth=True)
-        response = await self.httpx_client.post(
+        return await self.invoke_post(
             f"{self.original_base_host}/api/act-operation/v1/welfare/sign-in/do",
             headers=headers,
             content="",
+            model=None,
         )
-        return response.json()
 
     # endregion
     ###########################################################
@@ -496,6 +504,47 @@ class BXUltraClient:
         if needs_auth:
             the_headers["Authorization"] = f"Bearer {self.authorization_token}"
         return the_headers
+
+    async def invoke_get(
+        self,
+        url: str,
+        headers: dict | None,
+        params: dict | None,
+        model: Type[BxApiResponse],
+        parse_float=Decimal,
+    ) -> "BxApiResponse":
+        """
+        Invokes the specific request to the specific url with the specific params and headers.
+        """
+        response = await self.httpx_client.get(
+            url=url,
+            headers=headers,
+            params=params,
+        )
+        return model.deserialize(response.json(parse_float=parse_float))
+
+    async def invoke_post(
+        self,
+        url: str,
+        headers: dict | None = None,
+        params: dict | None = None,
+        content: str | bytes = "",
+        model: Type[BxApiResponse] | None = None,
+        parse_float=Decimal,
+    ) -> "BxApiResponse":
+        """
+        Invokes the specific request to the specific url with the specific params and headers.
+        """
+        response = await self.httpx_client.post(
+            url=url,
+            headers=headers,
+            params=params,
+            content=content,
+        )
+        if not model:
+            return response.json()
+
+        return model.deserialize(response.json(parse_float=parse_float))
 
     async def aclose(self) -> None:
         await self.httpx_client.aclose()
