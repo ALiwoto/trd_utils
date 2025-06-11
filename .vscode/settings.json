@@ -5,12 +5,16 @@
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
     "cSpell.words": [
+        "appsiteid",
         "blofin",
         "Elon",
         "okhttp",
+        "Platformid",
         "PYPI",
         "pyproject",
         "referer",
+        "Syslang",
+        "Traceid",
         "tradingview"
     ]
 }
