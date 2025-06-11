@@ -273,7 +273,7 @@ class BaseModel:
             if not isinstance(key, str):
                 continue
 
-            if key.startswith("__"):
+            if key.startswith("__") or key.startswith(f"_{self.__class__.__name__}__"):
                 # ignore private attributes
                 continue
 
