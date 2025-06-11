@@ -11,8 +11,8 @@ import httpx
 import time
 from pathlib import Path
 
-from .common_utils import do_ultra_ss
-from .bx_types import (
+from trd_utils.exchanges.bx_ultra.bx_utils import do_ultra_ss
+from trd_utils.exchanges.bx_ultra.bx_types import (
     AssetsInfoResponse,
     ContractOrdersHistoryResponse,
     ContractsListResponse,
@@ -27,7 +27,7 @@ from .bx_types import (
     ZenDeskABStatusResponse,
     ZoneModuleListResponse,
 )
-from ..cipher import AESCipher
+from trd_utils.cipher import AESCipher
 
 PLATFORM_ID_ANDROID = "10"
 PLATFORM_ID_WEB = "30"

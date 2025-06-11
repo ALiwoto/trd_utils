@@ -1,10 +1,11 @@
 from typing import Any, Optional
-from ..types_helper import BaseModel
 from decimal import Decimal
 from datetime import datetime, timedelta
 import pytz
 
-from .common_utils import (
+from trd_utils.types_helper import BaseModel
+
+from trd_utils.common_utils.float_utils import (
     dec_to_str,
     dec_to_normalize,
 )

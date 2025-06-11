@@ -1,7 +1,7 @@
 import pytest
 import asyncio
 
-from trd_utils.bx_ultra.bx_ultra_client import BXUltraClient
+from trd_utils.exchanges import BXUltraClient
 
 from trd_utils.types_helper import base_model
 

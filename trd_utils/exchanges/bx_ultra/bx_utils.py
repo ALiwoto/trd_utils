@@ -1,9 +1,7 @@
 import hashlib
 import json
 import uuid
-from decimal import Decimal
 
-default_quantize = Decimal("1.00")
 
 default_e: str = (
     "\u0039\u0035\u0064\u0036\u0035\u0063\u0037\u0033\u0064\u0063\u0035"
@@ -16,12 +14,6 @@ long_accept_header1: str = (
     "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,"
     + "image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
 )
-
-def dec_to_str(dec_value: Decimal) -> str:
-    return format(dec_value.quantize(default_quantize), "f")
-
-def dec_to_normalize(dec_value: Decimal) -> str:
-    return format(dec_value.normalize(), "f")
 
 def do_ultra_ss(
     e_param: str,
