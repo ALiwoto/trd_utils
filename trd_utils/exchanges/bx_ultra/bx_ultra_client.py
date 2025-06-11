@@ -53,20 +53,11 @@ class BXUltraClient(ExchangeBase):
     # region client parameters
     we_api_base_host: str = "\u0061pi-\u0061pp.w\u0065-\u0061pi.com"
     we_api_base_url: str = "https://\u0061pi-\u0061pp.w\u0065-\u0061pi.com/\u0061pi"
-
     original_base_host: str = "https://\u0062ing\u0078.co\u006d"
-
     qq_os_base_host: str = "https://\u0061pi-\u0061pp.\u0071\u0071-os.com"
     qq_os_base_url: str = "https://\u0061pi-\u0061pp.\u0071\u0071-os.com/\u0061pi"
 
-    device_id: str = None
-    trace_id: str = None
-    app_version: str = "4.28.3"
-    platform_id: str = "10"
-    install_channel: str = "officialAPK"
-    channel_header: str = "officialAPK"
     origin_header: str = "https://\u0062ing\u0078.co\u006d"
-    authorization_token: str = None
     app_id: str = "30004"
     main_app_id: str = "10009"
     trade_env: str = "real"
@@ -87,6 +78,7 @@ class BXUltraClient(ExchangeBase):
         app_version: str = ANDROID_APP_VERSION,
         http_verify: bool = True,
         fav_letter: str = "^",
+        sessions_dir: str = "sessions",
     ):
         self.httpx_client = httpx.AsyncClient(
             verify=http_verify, http2=True, http1=False
@@ -97,7 +89,7 @@ class BXUltraClient(ExchangeBase):
         self.app_version = app_version
         self._fav_letter = fav_letter
 
-        self.read_from_session_file(f"{self.account_name}.bx")
+        self.read_from_session_file(f"{sessions_dir}/{self.account_name}.bx")
 
     # endregion
     ###########################################################
@@ -442,7 +434,7 @@ class BXUltraClient(ExchangeBase):
             f"{self.we_api_base_url}/v6/copy-trade/search/search",
             headers=headers,
             params=params,
-            content=json.dumps(payload, separators=(",", ":"), sort_keys=True),
+            content=payload,
             model=SearchCopyTradersResponse,
         )
 
@@ -492,7 +484,7 @@ class BXUltraClient(ExchangeBase):
                 payload_data=payload,
             ),
             "Timestamp": f"{the_timestamp}",
-            # 'Accept-Encoding': 'gzip, deflate',
+            'Accept-Encoding': 'gzip, deflate',
             "User-Agent": self.user_agent,
             "Connection": "close",
             "appsiteid": "0",
@@ -508,9 +500,9 @@ class BXUltraClient(ExchangeBase):
     async def invoke_get(
         self,
         url: str,
-        headers: dict | None,
-        params: dict | None,
-        model: Type[BxApiResponse],
+        headers: dict | None = None,
+        params: dict | None = None,
+        model: Type[BxApiResponse] | None = None,
         parse_float=Decimal,
     ) -> "BxApiResponse":
         """
@@ -528,13 +520,17 @@ class BXUltraClient(ExchangeBase):
         url: str,
         headers: dict | None = None,
         params: dict | None = None,
-        content: str | bytes = "",
+        content: dict | str | bytes = "",
         model: Type[BxApiResponse] | None = None,
         parse_float=Decimal,
     ) -> "BxApiResponse":
         """
         Invokes the specific request to the specific url with the specific params and headers.
         """
+
+        if isinstance(content, dict):
+            content = json.dumps(content, separators=(",", ":"), sort_keys=True)
+
         response = await self.httpx_client.post(
             url=url,
             headers=headers,

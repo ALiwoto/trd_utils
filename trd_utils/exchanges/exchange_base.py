@@ -13,6 +13,15 @@ class ExchangeBase(ABC):
     x_requested_with: str = None
     httpx_client: httpx.AsyncClient = None
     account_name: str = "default"
+    sessions_dir: str = "sessions"
+
+    authorization_token: str = None
+    device_id: str = None
+    trace_id: str = None
+    app_version: str = "4.28.3"
+    platform_id: str = "10"
+    install_channel: str = "officialAPK"
+    channel_header: str = "officialAPK"
 
     _fav_letter: str = "^"
     # endregion

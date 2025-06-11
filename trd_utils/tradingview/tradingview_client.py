@@ -1,6 +1,3 @@
-
-
-
 import json
 from typing import Optional
 
@@ -10,41 +7,45 @@ from .tradingview_types import CoinScanInfo
 class TradingViewClient:
     """TradingViewClient class to interact with TradingView API."""
 
-
     def __init__(self) -> None:
         pass
 
-    async def get_coin_scan(self,
-                            coin_filter: Optional[str] = None,
-                            limit: int = 200,
-                            offset: int = 0) -> list['CoinScanInfo']:
+    async def get_coin_scan(
+        self,
+        coin_filter: Optional[str] = None,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> list["CoinScanInfo"]:
         import httpx
+
         cookies = {
-            'cookiesSettings': '{"analytics":true,"advertising":true}',
-            'cookiePrivacyPreferenceBannerProduction': 'accepted',
+            "cookiesSettings": '{"analytics":true,"advertising":true}',
+            "cookiePrivacyPreferenceBannerProduction": "accepted",
         }
 
         headers = {
-            'accept': 'application/json',
-            'accept-language': 'en-US,en;q=0.9',
-            'cache-control': 'no-cache',
-            'content-type': 'text/plain;charset=UTF-8',
-            'origin': 'https://www.tradingview.com',
-            'pragma': 'no-cache',
-            'priority': 'u=1, i',
-            'referer': 'https://www.tradingview.com/',
-            'sec-ch-ua': '"Not)A;Brand";v="99", "Google Chrome";v="127", "Chromium";v="127"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"Windows"',
-            'sec-fetch-dest': 'empty',
-            'sec-fetch-mode': 'cors',
-            'sec-fetch-site': 'same-site',
-            'user-agent': ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-                '(KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36'),
+            "accept": "application/json",
+            "accept-language": "en-US,en;q=0.9",
+            "cache-control": "no-cache",
+            "content-type": "text/plain;charset=UTF-8",
+            "origin": "https://www.tradingview.com",
+            "pragma": "no-cache",
+            "priority": "u=1, i",
+            "referer": "https://www.tradingview.com/",
+            "sec-ch-ua": '"Not)A;Brand";v="99", "Google Chrome";v="127", "Chromium";v="127"',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"Windows"',
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-site",
+            "user-agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                + "(KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
+            ),
         }
 
         params = {
-            'label-product': 'screener-coin',
+            "label-product": "screener-coin",
         }
 
         data = {
@@ -83,19 +84,14 @@ class TradingViewClient:
                 "Volatility.D",
             ],
             "ignore_unknown_fields": False,
-            "options": {
-                "lang": "en"
-            },
-            "range":[
+            "options": {"lang": "en"},
+            "range": [
                 offset,
                 offset + limit,
             ],
-            "sort": {
-                "sortBy": "crypto_total_rank",
-                "sortOrder": "asc"
-            },
+            "sort": {"sortBy": "crypto_total_rank", "sortOrder": "asc"},
             "symbols": {},
-            "markets": ["coin"]
+            "markets": ["coin"],
         }
 
         if coin_filter:
@@ -103,13 +99,13 @@ class TradingViewClient:
                 {
                     "left": "base_currency,base_currency_desc",
                     "operation": "match",
-                    "right": f"{coin_filter}"
+                    "right": f"{coin_filter}",
                 }
             ]
         data = json.dumps(data)
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                'https://scanner.tradingview.com/coin/scan',
+                "https://scanner.tradingview.com/coin/scan",
                 params=params,
                 cookies=cookies,
                 headers=headers,
