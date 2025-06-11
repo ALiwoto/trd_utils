@@ -261,12 +261,15 @@ class BaseModel:
 
     def serialize(
         self,
-        separators=(",", ":"),
-        ensure_ascii=True,
-        sort_keys=True,
+        separators = (",", ":"),
+        ensure_ascii: bool = True,
+        sort_keys: bool = True,
+        omit_none: bool = False,
     ) -> bytes:
         return json.dumps(
-            obj=self.to_dict(),
+            obj=self.to_dict(
+                omit_none=omit_none,
+            ),
             ensure_ascii=ensure_ascii,
             separators=separators,
             sort_keys=sort_keys,

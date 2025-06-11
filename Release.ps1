@@ -3,4 +3,7 @@ param (
     [string]$MainBranch = "master"
 )
 
-& git checkout $ProductionBranch && git merge $MainBranch && git push origin $ProductionBranch && git checkout $MainBranch
+& git checkout $ProductionBranch
+& git merge $MainBranch
+& git push origin $ProductionBranch
+& git checkout $MainBranch
