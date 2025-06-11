@@ -61,7 +61,12 @@ def value_to_normal_obj(value, omit_none: bool = False):
     if isinstance(value, list):
         results = []
         for current in value:
-            results.append(value_to_normal_obj(current))
+            results.append(
+                value_to_normal_obj(
+                    value=current,
+                    omit_none=omit_none,
+                )
+            )
         return results
 
     if isinstance(value, (int, str)) or value is None:
@@ -73,7 +78,10 @@ def value_to_normal_obj(value, omit_none: bool = False):
     if isinstance(value, dict):
         result = {}
         for inner_key, inner_value in value.items():
-            normalized_value = value_to_normal_obj(inner_value)
+            normalized_value = value_to_normal_obj(
+                value=inner_value,
+                omit_none=omit_none,
+            )
             if normalized_value is None and omit_none:
                 continue
 
@@ -263,7 +271,7 @@ class BaseModel:
 
     def serialize(
         self,
-        separators = (",", ":"),
+        separators=(",", ":"),
         ensure_ascii: bool = True,
         sort_keys: bool = True,
         omit_none: bool = False,
