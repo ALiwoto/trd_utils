@@ -48,7 +48,7 @@ def is_any_type(target_type: type) -> bool:
 
 
 # TODO: add support for max_depth for this...
-def value_to_normal_obj(value):
+def value_to_normal_obj(value, omit_none: bool = False,):
     """
     Converts a custom value, to a corresponding "normal object" which can be used
     in dict.
@@ -71,7 +71,11 @@ def value_to_normal_obj(value):
     if isinstance(value, dict):
         result = {}
         for inner_key, inner_value in value.items():
-            result[inner_key] = value_to_normal_obj(inner_value)
+            normalized_value = value_to_normal_obj(inner_value)
+            if normalized_value is None and omit_none:
+                continue
+
+            result[inner_key] = normalized_value
 
         return result
 
@@ -92,11 +96,13 @@ def generic_obj_to_value(
     if isinstance(value, list):
         result = []
         for current in value:
-            result.append(generic_obj_to_value(
-                expected_type=expected_type_args[0],
-                expected_type_args=expected_type_args[1:],
-                value=current,
-            ))
+            result.append(
+                generic_obj_to_value(
+                    expected_type=expected_type_args[0],
+                    expected_type_args=expected_type_args[1:],
+                    value=current,
+                )
+            )
         return result
 
     expected_type_name = getattr(expected_type, "__name__", None)
@@ -266,7 +272,10 @@ class BaseModel:
             sort_keys=sort_keys,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(
+        self,
+        omit_none: bool = False,
+    ) -> dict:
         annotations = get_my_field_types(self)
         result_dict = {}
         for key, _ in annotations.items():
@@ -277,5 +286,12 @@ class BaseModel:
                 # ignore private attributes
                 continue
 
-            result_dict[key] = value_to_normal_obj(getattr(self, key))
+            normalized_value = value_to_normal_obj(
+                value=getattr(self, key),
+                omit_none=omit_none,
+            )
+            if normalized_value is None and omit_none:
+                continue
+
+            result_dict[key] = normalized_value
         return result_dict
