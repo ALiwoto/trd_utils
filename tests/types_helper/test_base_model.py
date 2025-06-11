@@ -19,7 +19,7 @@ class MyData(BaseModel):
     main_group: GroupContainer = None
 
 
-def test_bx_get_earning_amounts():
+def test_my_data1():
     data = MyData()
     data.groups = {
         "a": GroupContainer(group_name="hallo1"),

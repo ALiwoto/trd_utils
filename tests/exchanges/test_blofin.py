@@ -66,6 +66,22 @@ async def test_blofin_get_copy_trader_order_list():
     print(f"Orders count: {len(result.data)}")
 
 @pytest.mark.asyncio
+async def test_blofin_get_copy_trader_all_order_list():
+    client = BlofinClient()
+
+    result = await client.get_copy_trader_all_order_list(
+        uid=2897425892,
+        chunk_limit=2,
+    )
+
+    assert result is not None
+    assert result.code == 200
+    assert result.data is not None
+    assert result.total_count == len(result.data)
+
+    print(f"Orders count: {len(result.data)}")
+
+@pytest.mark.asyncio
 async def test_blofin_get_copy_trader_order_history():
     client = BlofinClient()
 
@@ -81,3 +97,18 @@ async def test_blofin_get_copy_trader_order_history():
 
     print(f"Orders count: {len(result.data)}")
 
+@pytest.mark.asyncio
+async def test_blofin_get_copy_trader_all_order_history():
+    client = BlofinClient()
+
+    result = await client.get_copy_trader_all_order_history(
+        uid=2897425892,
+        chunk_limit=60,
+    )
+
+    assert result is not None
+    assert result.code == 200
+    assert result.data is not None
+    assert result.total_count == len(result.data)
+
+    print(f"Orders count: {len(result.data)}")

@@ -139,6 +139,11 @@ class CopyTraderSingleOrderInfo(BaseModel):
 class CopyTraderOrderListResponse(BlofinApiResponse):
     data: list[CopyTraderSingleOrderInfo] = None
 
+class CopyTraderAllOrderList(CopyTraderOrderListResponse):
+    total_count: int = None
 
 class CopyTraderOrderHistoryResponse(BlofinApiResponse):
     data: list[CopyTraderSingleOrderInfo] = None
+
+class CopyTraderAllOrderHistory(CopyTraderOrderHistoryResponse):
+    total_count: int = None

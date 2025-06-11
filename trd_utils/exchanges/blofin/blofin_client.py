@@ -1,3 +1,4 @@
+import asyncio
 from decimal import Decimal
 import json
 import logging
@@ -10,6 +11,8 @@ from pathlib import Path
 from trd_utils.exchanges.blofin.blofin_types import (
     BlofinApiResponse,
     CmsColorResponse,
+    CopyTraderAllOrderHistory,
+    CopyTraderAllOrderList,
     CopyTraderInfoResponse,
     CopyTraderOrderHistoryResponse,
     CopyTraderOrderListResponse,
@@ -89,9 +92,9 @@ class BlofinClient(ExchangeBase):
 
     async def get_copy_trader_order_list(
         self,
-        from_param: int,
-        limit_param: 0,
         uid: int,
+        from_param: int = 0,
+        limit_param: int = 20,
     ) -> CopyTraderOrderListResponse:
         payload = {
             "from": from_param,
@@ -106,11 +109,60 @@ class BlofinClient(ExchangeBase):
             model=CopyTraderOrderListResponse,
         )
     
+    async def get_copy_trader_all_order_list(
+        self,
+        uid: int,
+        from_param: int = 0,
+        chunk_limit: int = 20,
+        sleep_delay: int = 0.5,
+    ) -> CopyTraderAllOrderList:
+        if chunk_limit < 1:
+            raise ValueError("chunk_limit parameter has to be more than 1")
+
+        result = CopyTraderAllOrderList(
+            code=200,
+            data=[],
+            total_count=0,
+        )
+        current_id_from = from_param
+        while True:
+            total_ignored = 0
+            current_result = await self.get_copy_trader_order_list(
+                uid=uid,
+                from_param=current_id_from,
+                limit_param=chunk_limit,
+            )
+            if not current_result or not isinstance(current_result, CopyTraderOrderListResponse) or \
+                not current_result.data:
+                return result
+            
+            if current_result.data[0].id == current_id_from:
+                if len(current_result.data) < 2:
+                    return result
+                current_result.data = current_result.data[1:]
+                total_ignored += 1
+            elif current_id_from:
+                raise ValueError(
+                    "Expected first array to have the same value as from_param: "
+                    f"current_id_from: {current_id_from}; but was: {current_result.data[0].id}"
+                )
+            
+            current_id_from = current_result.data[-1].id
+            result.data.extend(current_result.data)
+            result.total_count += len(current_result.data)
+            if len(current_result.data) < chunk_limit - total_ignored:
+                # the trader doesn't have any more open orders
+                return result
+            if result.total_count > len(current_result.data) and sleep_delay:
+                # we don't want to sleep after 1 request only
+                await asyncio.sleep(sleep_delay)
+
+
     async def get_copy_trader_order_history(
         self,
-        from_param: int,
-        limit_param: 0,
         uid: int,
+        from_param: int = 0,
+        limit_param: int = 20,
     ) -> CopyTraderOrderHistoryResponse:
         payload = {
             "from": from_param,
@@ -124,6 +176,54 @@ class BlofinClient(ExchangeBase):
             content=payload,
             model=CopyTraderOrderHistoryResponse,
         )
+
+    async def get_copy_trader_all_order_history(
+        self,
+        uid: int,
+        from_param: int = 0,
+        chunk_limit: int = 20,
+        sleep_delay: int = 0.5,
+    ) -> CopyTraderAllOrderHistory:
+        if chunk_limit < 1:
+            raise ValueError("chunk_limit parameter has to be more than 1")
+
+        result = CopyTraderAllOrderHistory(
+            code=200,
+            data=[],
+            total_count=0,
+        )
+        current_id_from = from_param
+        while True:
+            total_ignored = 0
+            current_result = await self.get_copy_trader_order_history(
+                uid=uid,
+                from_param=current_id_from,
+                limit_param=chunk_limit,
+            )
+            if not current_result or not isinstance(current_result, CopyTraderOrderHistoryResponse) or \
+                not current_result.data:
+                return result
+            
+            if current_result.data[0].id == current_id_from:
+                if len(current_result.data) < 2:
+                    return result
+                current_result.data = current_result.data[1:]
+                total_ignored += 1
+            elif current_id_from:
+                raise ValueError(
+                    "Expected first array to have the same value as from_param: "
+                    f"current_id_from: {current_id_from}; but was: {current_result.data[0].id}"
+                )
+            
+            current_id_from = current_result.data[-1].id
+            result.data.extend(current_result.data)
+            result.total_count += len(current_result.data)
+            if len(current_result.data) < chunk_limit - total_ignored:
+                # the trader doesn't have any more orders history
+                return result
+            if result.total_count > len(current_result.data) and sleep_delay:
+                # we don't want to sleep after 1 request only
+                await asyncio.sleep(sleep_delay)
 
     # endregion
     ###########################################################
