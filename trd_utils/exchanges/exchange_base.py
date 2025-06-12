@@ -1,9 +1,10 @@
-
 from decimal import Decimal
 from typing import Any
 from abc import ABC
 
 import httpx
+
+from trd_utils.exchanges.base_types import UnifiedTraderInfo, UnifiedTraderPositions
 
 
 class ExchangeBase(ABC):
@@ -25,6 +26,38 @@ class ExchangeBase(ABC):
 
     _fav_letter: str = "^"
     # endregion
+    ###########################################################
+
+    # region abstract trading methods
+
+    async def get_unified_trader_positions(
+        self,
+        uid: int | str,
+    ) -> UnifiedTraderPositions:
+        """
+        Returns the unified version of all currently open positions of the specific
+        trader. Note that different exchanges might fill different fields, according to the
+        data they provide in their public APIs.
+        If you want to fetch past positions history, you have to use another method.
+        """
+        raise NotImplementedError(
+            "This method is not implemented in ExchangeBase class. "
+            "Please use a real exchange class inheriting and implementing this method."
+        )
+
+    async def get_unified_trader_info(self, uid: int | str) -> UnifiedTraderInfo:
+        """
+        Returns information about a specific trader.
+        Different exchanges might return and fill different information according to the
+        data returned from their public APIs.
+        """
+        raise NotImplementedError(
+            "This method is not implemented in ExchangeBase class. "
+            "Please use a real exchange class inheriting and implementing this method."
+        )
+
+    # endregion
+
     ###########################################################
     # region client helper methods
     def get_headers(self, payload=None, needs_auth: bool = False) -> dict:
