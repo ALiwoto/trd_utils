@@ -10,12 +10,21 @@ from trd_utils.common_utils.float_utils import (
     dec_to_normalize,
 )
 
+###########################################################
+
+# region constant variables
+
 ORDER_TYPES_MAP = {
     0: "LONG",
     1: "SHORT",
 }
 
+# endregion
 
+###########################################################
+
+
+# region Common types
 class BxApiResponse(BaseModel):
     code: int = None
     timestamp: int = None
@@ -65,7 +74,25 @@ class CoinQuotationInfo(BaseModel):
         return f"{self.coin_name}/{self.valuation_coin_name}; price: {self.close}; vol: {self.market_val}"
 
 
+class ExchangeVo(BaseModel):
+    exchange_id: int = None
+    exchange_name: str = None
+    icon: str = None
+    account_enum: str = None
+    desc: str = None
+
+    def __str__(self):
+        return f"{self.exchange_name} ({self.exchange_id}) - {self.account_enum}"
+
+    def __repr__(self):
+        return f"{self.exchange_name} ({self.exchange_id}) - {self.account_enum}"
+
+
+# endregion
+
 ###########################################################
+
+# region ZoneModule types
 
 
 class ZoneModuleInfo(BaseModel):
@@ -94,7 +121,11 @@ class ZoneModuleListResponse(BxApiResponse):
     data: ZoneModuleListResult = None
 
 
+# endregion
+
 ###########################################################
+
+# region UserFavorite types
 
 
 class UserFavoriteQuotationResult(BaseModel):
@@ -110,7 +141,11 @@ class UserFavoriteQuotationResponse(BxApiResponse):
     data: UserFavoriteQuotationResult = None
 
 
+# endregion
+
 ###########################################################
+
+# region QuotationRank types
 
 
 class QuotationRankBizItem(BaseModel):
@@ -137,6 +172,8 @@ class QuotationRankResponse(BxApiResponse):
     data: QuotationRankResult = None
 
 
+# endregion
+
 ###########################################################
 
 # region HotSearch types
@@ -150,7 +187,7 @@ class HotSearchItem(BaseModel):
 
     def __str__(self):
         return f"{self.coin_name} ({self.symbol})"
-    
+
     def __repr__(self):
         return f"{self.coin_name} ({self.symbol})"
 
@@ -168,13 +205,13 @@ class HotSearchResponse(BxApiResponse):
     def __str__(self):
         if not self.data:
             return "HotSearchResponse: No data"
-        
+
         str_result = "HotSearchResponse: \n"
         for current_item in self.data.result:
             str_result += f" - {current_item}\n"
-        
+
         return str_result
-    
+
     def __repr__(self):
         return self.__str__()
 
@@ -338,8 +375,9 @@ class HomePageResponse(BxApiResponse):
 
 # endregion
 
-
 ###########################################################
+
+# region ZenDesk types
 
 
 class ZenDeskABStatusResult(BaseModel):
@@ -349,8 +387,17 @@ class ZenDeskABStatusResult(BaseModel):
 class ZenDeskABStatusResponse(BxApiResponse):
     data: ZenDeskABStatusResult = None
 
+class ZenDeskAuthResult(BaseModel):
+    jwt: str = None
+
+class ZenDeskAuthResponse(BxApiResponse):
+    data: ZenDeskAuthResult = None
+
+# endregion
 
 ###########################################################
+
+# region HintList types
 
 
 class HintListResult(BaseModel):
@@ -361,9 +408,11 @@ class HintListResponse(BxApiResponse):
     data: HintListResult = None
 
 
+# endregion
+
 ###########################################################
 
-#region CopyTrading types
+# region CopyTrading types
 
 
 class CopyTradingSymbolConfigInfo(BaseModel):
@@ -417,6 +466,155 @@ class CopyTraderTradePositionsResponse(BxApiResponse):
     data: CopyTraderTradePositionsResult = None
 
 
+class CopyTraderFuturesStatsResult(BaseModel):
+    api_identity: int = None
+    dis_play_name: str = None
+    icon: str = None
+    valid: int = None
+    risk_status: int = None
+    is_relation: int = None
+    copier_status: int = None
+    vst_copier_status: int = None
+    follower_full: bool = None
+    being_invite: bool = None
+    str_follower_num: int = None
+    equity: str = None
+    total_earnings: str = None
+    follower_earning: str = None
+    max_draw_down: str = None
+    str_total_earnings_rate: str = None
+    str_recent30_days_rate: str = None
+    str_recent7_days_rate: str = None
+    str_recent90_days_rate: str = None
+    str_recent180_days_rate: str = None
+    exchange_vo: ExchangeVo = None
+    update_time: datetime = None
+    commission_rate: float = None
+    risk_level7_days: int = None
+    risk_level30_days: int = None
+    risk_level90_days: int = None
+    risk_level180_days: int = None
+    str_acc_follower_num: int = None
+    win_rate: str = None
+    total_transactions: int = None
+    profit_count: int = None
+    avg_profit_amount: str = None
+    avg_profit_rate: str = None
+    loss_count: int = None
+    avg_loss_amount: str = None
+    avg_loss_rate: str = None
+    pnl_rate: str = None
+    avg_hold_time: int = None
+    weekly_trade_frequency: str = None
+    trade_days: int = None
+    last_trade_time: datetime = None
+    expand: int = None
+    recent7_day_follower_num_change: int = None
+    recent30_day_follower_num_change: int = None
+    recent90_day_follower_num_change: int = None
+    recent180_day_follower_num_change: int = None
+    latest30_days_median_margin: str = None
+    latest30_days_median_lever_times: str = None
+    cumulative_profit_loss7_d: float = None
+    cumulative_profit_loss30_d: float = None
+    cumulative_profit_loss90_d: float = None
+    cumulative_profit_loss180_d: float = None
+    maximum_draw_down: int = None
+    max_draw_down7_d: float = None
+    max_draw_down30_d: float = None
+    max_draw_down90_d: float = None
+    max_draw_down180_d: float = None
+    total_position_count: int = None
+    profitable_position_count: int = None
+    loss_position_count: int = None
+    profit_realized_pnl_u: float = None
+    loss_realized_pnl_u: float = None
+    pnl_rate_u: str = None
+    avg_profit: float = None
+    avg_loss: float = None
+    is_pro: int = None
+
+
+class CopyTraderFuturesStatsResponse(BxApiResponse):
+    data: CopyTraderFuturesStatsResult = None
+
+
+class CopyTraderInfo(BaseModel):
+    nick_name: str = None
+    avatar: str = None
+    brief: str = None
+    uid: int = None
+    register_date: datetime = None
+    calling_code: str = None
+    team_id: int = None
+    short_uid: int = None
+    identity_type: int = None
+
+class CopyTraderVo(BaseModel):
+    audit_status: int = None
+    trader_status: int = None
+    profit_share_rate: float = None
+    trader_role: int = None
+    recent_avg_margin: int = None
+    min_basic_copy_trade_unit: int = None
+    max_basic_copy_trade_unit: int = None
+    basic_copy_trade_unit: int = None
+    copy_trade_rate_on: bool = None
+    trader_protect_status: int = None
+    trader_public_recommend_status: int = None
+    rank_account_id: int = None
+    last_trader_time: datetime = None
+
+class CopyTraderAccountGradeVO(BaseModel):
+    uid: int = None
+    api_identity: int = None
+    trader_grade: int = None
+    label: int = None
+    uid_and_api: str = None
+
+class CopyTraderSharingAccount(BaseModel):
+    category: int = None
+    trader: int = None
+    api_identity: int = None
+    display_name: str = None
+    icon: str = None
+    valid: int = None
+    copier_status: int = None
+    vst_copier_status: int = None
+    follower_full: bool = None
+    copy_trade_account_enum: str = None
+    order: int = None
+    trader_account_grade_vo: Optional[CopyTraderAccountGradeVO] = None
+    hide_info: int = None
+    copy_trade_label_type: Optional[int] = None
+
+class CopyTraderResumeResult(BaseModel):
+    trader_info: CopyTraderInfo = None
+    trader_vo: CopyTraderVo = None
+    tags: list = None
+    has_new: int = None
+    labels: list = None
+    has_subscribed: int = None
+    fans_num: int = None
+    follower_num: int = None
+    subscriber_num: int = None
+    category: int = None
+    api_identity: int = None
+    trader_sharing_accounts: list[CopyTraderSharingAccount] = None
+    latest30_days_earning_ratio: str = None
+    swap_copy_trade_label_type: int = None
+    is_pro: int = None
+
+class CopyTraderResumeResponse(BxApiResponse):
+    data: CopyTraderResumeResult = None
+
+# endregion
+
+###########################################################
+
+# region SearchCopyTrading types
+
+
 class SearchCopyTraderCondition(BaseModel):
     key: str = "exchangeId"
     selected: int = 2
@@ -429,8 +627,10 @@ class SearchCopyTraderCondition(BaseModel):
             "type": self.type,
         }
 
+
 class SearchedTraderChartItem(BaseModel):
     cumulative_pnl_rate: Decimal = None
+
 
 class SearchedTraderExchangeVoInfo(BaseModel):
     account_enum: str = None
@@ -438,6 +638,7 @@ class SearchedTraderExchangeVoInfo(BaseModel):
     exchange_id: int = None
     exchange_name: str = None
     icon: str = None
+
 
 class SearchTraderInfoRankStat(BaseModel):
     api_identity: int = None
@@ -451,7 +652,7 @@ class SearchTraderInfoRankStat(BaseModel):
     copier_status: int = None
     dis_play_name: str = None
     equity: str = None
-    exchange_vo: Any = None  # unknown
+    exchange_vo: ExchangeVo = None  # unknown
     expand: int = None
     follower_earning: str = None
     follower_full: bool = None
@@ -491,6 +692,7 @@ class SearchTraderInfoRankStat(BaseModel):
     weekly_trade_frequency: str = None
     winRate: str = None
 
+
 class SearchedTraderInfo(BaseModel):
     avatar: str = None
     be_trader: bool = None
@@ -505,11 +707,13 @@ class SearchedTraderInfo(BaseModel):
     team_id: int = None
     uid: int = None
 
+
 class SearchedTraderAccountGradeVoInfo(BaseModel):
     api_identity: int = None
     label: int = None
     trader_grade: int = None
     uid: int = None
+
 
 class SearchTraderInfoContainer(BaseModel):
     content: str = None
@@ -523,33 +727,34 @@ class SearchTraderInfoContainer(BaseModel):
     def get_nick_name(self) -> str:
         if self.trader:
             return self.trader.nick_name
-        
+
         return
 
     def get_uid(self) -> int:
         if self.trader:
             return self.trader.uid
-        
+
         return
 
     def get_api_identity(self) -> int:
         if self.trader_account_grade_vo:
             return self.trader_account_grade_vo.api_identity
-        
+
         if self.rank_stat:
             return self.rank_stat.api_identity
-        
+
         # TODO: later on add support for more cases
         return None
 
     def __str__(self):
         if not self.trader:
             return "No trader info"
-        
+
         return f"uid: {self.trader.uid}; name: {self.trader.nick_name}; country: {self.trader.nation}"
-    
+
     def __repr__(self):
         return self.__str__()
+
 
 class SearchCopyTradersResult(BaseModel):
     expand_display: Any = None  # unknown
@@ -565,15 +770,17 @@ class SearchCopyTradersResult(BaseModel):
     search_result: bool = None
     total: int = None
 
+
 class SearchCopyTradersResponse(BxApiResponse):
     data: SearchCopyTradersResult = None
 
 
-#endregion
+# endregion
 
 ###########################################################
 
 # region Account Assets types
+
 
 class TotalAssetsInfo(BaseModel):
     amount: Any = None  # unknown
@@ -582,9 +789,10 @@ class TotalAssetsInfo(BaseModel):
 
     def __str__(self):
         return f"{dec_to_str(self.currency_amount)} {self.sign}"
-    
+
     def __repr__(self):
         return self.__str__()
+
 
 class AccountOverviewItem(BaseModel):
     account_name: str = None
@@ -596,6 +804,7 @@ class AccountOverviewItem(BaseModel):
     def __str__(self):
         return f"{self.account_name} ({self.account_type}): {self.total}"
 
+
 class AssetsInfoResult(BaseModel):
     total: TotalAssetsInfo = None
     account_overviews: list[AccountOverviewItem] = None
@@ -606,8 +815,10 @@ class AssetsInfoResult(BaseModel):
     fault_flag: int = None
     fault_accounts: Any = None  # unknown
 
+
 class AssetsInfoResponse(BxApiResponse):
     data: AssetsInfoResult = None
+
 
 # endregion
 
@@ -615,14 +826,16 @@ class AssetsInfoResponse(BxApiResponse):
 
 # region Contracts types
 
+
 class BasicCoinInfo(BaseModel):
     name: str = None
 
     def __str__(self):
         return f"{self.name} CoinInfo"
-    
+
     def __repr__(self):
         return self.__str__()
+
 
 class QuotationCoinVOInfo(BaseModel):
     id: int = None
@@ -632,13 +845,16 @@ class QuotationCoinVOInfo(BaseModel):
     name: str = None
     market_status: int = None
 
+
 class OrderDebitInfo(BaseModel):
     lend_coin: BasicCoinInfo = None
     amount: Decimal = None
 
+
 class OrderOpenTradeInfo(BaseModel):
     traded_amount: Decimal = None
     traded_cash_amount: Decimal = None
+
 
 class ContractOrderStatus(BaseModel):
     code: int = None
@@ -658,6 +874,7 @@ class ContractTakeProfitInfo(BaseModel):
     close_style: int = None
     all_close: bool = None
 
+
 class ContractStopLossInfo(BaseModel):
     id: int = None
 
@@ -671,6 +888,7 @@ class ContractStopLossInfo(BaseModel):
     close_style: int = None
     all_close: bool = None
 
+
 class ProfitLossInfoContainer(BaseModel):
     loss_nums: int = None
     profit_nums: int = None
@@ -679,6 +897,7 @@ class ProfitLossInfoContainer(BaseModel):
     profit_config: ContractTakeProfitInfo = None
     loss_config: ContractStopLossInfo = None
 
+
 class ContractOrderInfo(BaseModel):
     order_no: int = None
     quotation_coin_vo: QuotationCoinVOInfo = None
@@ -686,7 +905,7 @@ class ContractOrderInfo(BaseModel):
     margin_coin_name: str = None
     lever_times: Decimal = None
     display_lever_times: Decimal = None
-    amount: Decimal = None # margin * lever_times
+    amount: Decimal = None  # margin * lever_times
     display_price: Decimal = None
     display_close_price: Decimal = None
     order_type: int = None
@@ -729,10 +948,10 @@ class ContractOrderInfo(BaseModel):
 
     def get_open_price(self) -> Decimal:
         return self.display_price
-    
+
     def get_liquidation_price(self) -> Decimal:
         return self.sys_force_price
-    
+
     def get_profit_str(self) -> str:
         last_price = self.current_price or self.display_close_price
         profit_or_loss = last_price - self.display_price
@@ -756,14 +975,20 @@ class ContractOrderInfo(BaseModel):
                 sl_config = self.profit_loss_info.loss_config
                 result_str += f"SL: {dec_to_normalize(sl_config.stop_price)}"
                 result_str += f"{sl_config.margin_coin_name}{separator}"
-        
+
         if self.sys_force_price:
-            result_str += f"liquidation: {dec_to_normalize(self.sys_force_price)}{separator}"
-        
+            result_str += (
+                f"liquidation: {dec_to_normalize(self.sys_force_price)}{separator}"
+            )
+
         if self.current_price:
-            result_str += f"current price: {dec_to_normalize(self.current_price)}{separator}"
+            result_str += (
+                f"current price: {dec_to_normalize(self.current_price)}{separator}"
+            )
         elif self.display_close_price:
-            result_str += f"close price: {dec_to_normalize(self.display_close_price)}{separator}"
+            result_str += (
+                f"close price: {dec_to_normalize(self.display_close_price)}{separator}"
+            )
         profit_str = self.get_profit_str()
         result_str += f"profit: {profit_str}%"
 
@@ -771,14 +996,16 @@ class ContractOrderInfo(BaseModel):
 
     def __str__(self):
         return self.to_str()
-    
+
     def __repr__(self):
         return self.to_str()
+
 
 class ClosedContractOrderInfo(ContractOrderInfo):
     close_type_name: str = None
     gross_earnings: Decimal = None
     position_order: int = None
+
 
 class MarginStatInfo(BaseModel):
     name: str = None
@@ -788,17 +1015,21 @@ class MarginStatInfo(BaseModel):
     # total count of open contract orders in this margin-type.
     total: int = None
 
+
 class ContractsListResult(BaseModel):
     orders: list[ContractOrderInfo] = None
     page_id: int = None
     margin_stats: list[MarginStatInfo] = None
 
+
 class ContractsListResponse(BxApiResponse):
     data: ContractsListResult = None
+
 
 class ContractOrdersHistoryResult(BaseModel):
     orders: list[ClosedContractOrderInfo] = None
     page_id: int = None
+
 
 class ContractOrdersHistoryResponse(BxApiResponse):
     data: ContractOrdersHistoryResult = None
@@ -813,19 +1044,23 @@ class ContractOrdersHistoryResponse(BxApiResponse):
         today = datetime.now(timezone).date()
         for current_order in self.data.orders:
             # check if the date is for today
-            closed_date = datetime.strptime(
-                current_order.close_date,
-                '%Y-%m-%dT%H:%M:%S.%f%z',
-            ).astimezone(timezone).date()
+            closed_date = (
+                datetime.strptime(
+                    current_order.close_date,
+                    "%Y-%m-%dT%H:%M:%S.%f%z",
+                )
+                .astimezone(timezone)
+                .date()
+            )
             if closed_date == today:
                 today_earnings += current_order.gross_earnings
                 found_any_for_today = True
-        
+
         if not found_any_for_today:
             return None
 
         return today_earnings
-    
+
     def get_this_week_earnings(self, timezone: Any = pytz.UTC) -> Decimal:
         """
         Returns the total earnings for this week.
@@ -837,14 +1072,18 @@ class ContractOrdersHistoryResponse(BxApiResponse):
         week_start = today - timedelta(days=today.weekday())
         for current_order in self.data.orders:
             # check if the date is for this week
-            closed_date = datetime.strptime(
-                current_order.close_date,
-                '%Y-%m-%dT%H:%M:%S.%f%z',
-            ).astimezone(timezone).date()
+            closed_date = (
+                datetime.strptime(
+                    current_order.close_date,
+                    "%Y-%m-%dT%H:%M:%S.%f%z",
+                )
+                .astimezone(timezone)
+                .date()
+            )
             if closed_date >= week_start:
                 week_earnings += current_order.gross_earnings
                 found_any_for_week = True
-        
+
         if not found_any_for_week:
             return None
 
@@ -861,14 +1100,18 @@ class ContractOrdersHistoryResponse(BxApiResponse):
         month_start = today.replace(day=1)
         for current_order in self.data.orders:
             # check if the date is for this month
-            closed_date = datetime.strptime(
-                current_order.close_date,
-                '%Y-%m-%dT%H:%M:%S.%f%z',
-            ).astimezone(timezone).date()
+            closed_date = (
+                datetime.strptime(
+                    current_order.close_date,
+                    "%Y-%m-%dT%H:%M:%S.%f%z",
+                )
+                .astimezone(timezone)
+                .date()
+            )
             if closed_date >= month_start:
                 month_earnings += current_order.gross_earnings
                 found_any_for_month = True
-        
+
         if not found_any_for_month:
             return None
 
@@ -878,4 +1121,8 @@ class ContractOrdersHistoryResponse(BxApiResponse):
         if not self.data or not self.data.orders:
             return 0
         return len(self.data.orders)
-        
+
+
+# endregion
+
+###########################################################

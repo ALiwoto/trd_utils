@@ -1,3 +1,4 @@
+import datetime
 from decimal import Decimal
 import json
 from typing import (
@@ -6,6 +7,8 @@ from typing import (
     Any,
     get_args as get_type_args,
 )
+
+import dateutil.parser
 
 from trd_utils.html_utils.html_formats import camel_to_snake
 
@@ -241,6 +244,14 @@ class BaseModel:
 
                 if ULTRA_LIST_ENABLED and isinstance(value, list):
                     value = convert_to_ultra_list(value)
+            elif expected_type is datetime.datetime and isinstance(value, str):
+                try:
+                    value = dateutil.parser.parse(value)
+                except Exception as ex:
+                    raise ValueError(
+                        f"Failed to parse the string as datetime: {value}"
+                        f" Are you sure it's in correct format? inner error: {ex}"
+                    )
 
             # Type checking
             elif not (is_any_type(expected_type) or isinstance(value, expected_type)):

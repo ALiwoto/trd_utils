@@ -17,6 +17,8 @@ from trd_utils.exchanges.bx_ultra.bx_types import (
     AssetsInfoResponse,
     ContractOrdersHistoryResponse,
     ContractsListResponse,
+    CopyTraderFuturesStatsResponse,
+    CopyTraderResumeResponse,
     CopyTraderTradePositionsResponse,
     HintListResponse,
     HomePageResponse,
@@ -26,6 +28,7 @@ from trd_utils.exchanges.bx_ultra.bx_types import (
     SearchCopyTradersResponse,
     UserFavoriteQuotationResponse,
     ZenDeskABStatusResponse,
+    ZenDeskAuthResponse,
     ZoneModuleListResponse,
     BxApiResponse,
 )
@@ -44,6 +47,8 @@ EDGE_DEVICE_BRAND = "Windows 10_Edge_131.0.0.0"
 ANDROID_APP_VERSION = "4.28.3"
 WEB_APP_VERSION = "4.78.12"
 TG_APP_VERSION = "5.0.15"
+
+ACCEPT_ENCODING_HEADER = "gzip, deflate, br, zstd"
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +200,13 @@ class BXUltraClient(ExchangeBase):
             headers=headers,
             model=ZenDeskABStatusResponse,
         )
-
+    async def do_zendesk_auth(self) -> ZenDeskAuthResponse:
+        headers = self.get_headers(needs_auth=True)
+        return await self.invoke_get(
+            f"{self.we_api_base_url}/customer/v1/zendesk/auth/jwt",
+            headers=headers,
+            model=ZenDeskAuthResponse,
+        )
     # endregion
     ###########################################################
     # region platform-tool
@@ -380,7 +391,7 @@ class BXUltraClient(ExchangeBase):
     # region copy-trade-facade
     async def get_copy_trade_trader_positions(
         self,
-        uid: str,
+        uid: int | str,
         api_identity: str,
         page_size: int = 20,
         page_id: int = 0,
@@ -438,6 +449,38 @@ class BXUltraClient(ExchangeBase):
             model=SearchCopyTradersResponse,
         )
 
+    async def get_copy_trader_futures_stats(
+        self,
+        uid: int | str,
+        api_identity: str,
+    ) -> CopyTraderFuturesStatsResponse:
+        params = {
+            "uid": f"{uid}",
+            "apiIdentity": f"{api_identity}",
+        }
+        headers = self.get_headers(params)
+        return await self.invoke_get(
+            f"{self.we_api_base_url}/copy-trade-facade/v4/trader/account/futures/stat",
+            headers=headers,
+            params=params,
+            model=CopyTraderFuturesStatsResponse,
+        )
+
+    async def get_copy_trader_resume(
+        self,
+        uid: int | str,
+    ) -> CopyTraderResumeResponse:
+        params = {
+            "uid": f"{uid}",
+        }
+        headers = self.get_headers(params)
+        return await self.invoke_get(
+            f"{self.we_api_base_url}/copy-trade-facade/v1/trader/resume",
+            headers=headers,
+            params=params,
+            model=CopyTraderResumeResponse,
+        )
+
     # endregion
     ###########################################################
     # region welfare
@@ -484,7 +527,7 @@ class BXUltraClient(ExchangeBase):
                 payload_data=payload,
             ),
             "Timestamp": f"{the_timestamp}",
-            'Accept-Encoding': 'gzip, deflate',
+            "Accept-Encoding": ACCEPT_ENCODING_HEADER,
             "User-Agent": self.user_agent,
             "Connection": "close",
             "appsiteid": "0",

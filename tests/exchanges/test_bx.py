@@ -137,6 +137,91 @@ async def test_bx_get_copy_trade_trader_positions():
     await client.aclose()
 
 @pytest.mark.asyncio
+async def test_bx_get_copy_trade_trader_positions2():
+    client = BXUltraClient()
+
+    result = await client.get_copy_trade_trader_positions(
+        uid=1414050434086264836,
+        api_identity=1449963490674978822,
+        # uid=1139467159170900000,
+        # api_identity=1146548274759884800,
+    )
+
+    assert result is not None
+    assert result.code == 0
+    assert result.data is not None
+
+    print("User's positions: ")
+    for current_position in result.data.positions:
+        print(f" - {current_position}")
+
+    await client.aclose()
+
+@pytest.mark.asyncio
+async def test_bx_get_copy_trader_futures_stats():
+    client = BXUltraClient()
+
+    result = await client.get_copy_trader_futures_stats(
+        uid=1414050434086264836,
+        api_identity=1449963490674978822,
+    )
+
+    assert result is not None
+    assert result.code == 0
+    assert result.data is not None
+
+    print(f"Stat name: {result.data.dis_play_name}")
+    print(f"Amount of followers: {result.data.str_follower_num}")
+
+    await client.aclose()
+
+@pytest.mark.asyncio
+async def test_bx_get_copy_trader_resume1():
+    client = BXUltraClient()
+
+    result = await client.get_copy_trader_resume(
+        uid=1414050434086264836,
+    )
+
+    assert result is not None
+    assert result.code == 0
+    assert result.data is not None
+    assert result.data.api_identity is not None
+
+    print(f"Trader name: {result.data.trader_info.nick_name}")
+    print(f"Amount of followers: {result.data.subscriber_num}")
+
+    await client.aclose()
+
+@pytest.mark.asyncio
+async def test_bx_get_copy_trader_resume2():
+    client = BXUltraClient()
+
+    USER_ID = 1998800000051839
+
+    result = await client.get_copy_trader_resume(
+        uid=USER_ID,
+    )
+
+    assert result is not None
+    assert result.code == 0
+    assert result.data is not None
+    assert result.data.api_identity is not None
+
+    print(f"Trader name: {result.data.trader_info.nick_name}")
+    print(f"Amount of followers: {result.data.subscriber_num}")
+
+    positions_resp = await client.get_copy_trade_trader_positions(
+        uid=USER_ID,
+        api_identity=result.data.api_identity,
+        copy_trade_label_type=result.data.labels[0],
+    )
+
+    assert positions_resp is not None
+
+    await client.aclose()
+
+@pytest.mark.asyncio
 async def test_bx_get_hint_list():
     client = BXUltraClient()
 
