@@ -8,6 +8,7 @@ import httpx
 import time
 from pathlib import Path
 
+from trd_utils.exchanges.base_types import UnifiedTraderInfo, UnifiedTraderPositions
 from trd_utils.exchanges.blofin.blofin_types import (
     BlofinApiResponse,
     CmsColorResponse,
@@ -108,7 +109,7 @@ class BlofinClient(ExchangeBase):
             content=payload,
             model=CopyTraderOrderListResponse,
         )
-    
+
     async def get_copy_trader_all_order_list(
         self,
         uid: int,
@@ -132,10 +133,13 @@ class BlofinClient(ExchangeBase):
                 from_param=current_id_from,
                 limit_param=chunk_limit,
             )
-            if not current_result or not isinstance(current_result, CopyTraderOrderListResponse) or \
-                not current_result.data:
+            if (
+                not current_result
+                or not isinstance(current_result, CopyTraderOrderListResponse)
+                or not current_result.data
+            ):
                 return result
-            
+
             if current_result.data[0].id == current_id_from:
                 if len(current_result.data) < 2:
                     return result
@@ -146,7 +150,7 @@ class BlofinClient(ExchangeBase):
                     "Expected first array to have the same value as from_param: "
                     f"current_id_from: {current_id_from}; but was: {current_result.data[0].id}"
                 )
-            
+
             current_id_from = current_result.data[-1].id
             result.data.extend(current_result.data)
             result.total_count += len(current_result.data)
@@ -156,7 +160,6 @@ class BlofinClient(ExchangeBase):
             if result.total_count > len(current_result.data) and sleep_delay:
                 # we don't want to sleep after 1 request only
                 await asyncio.sleep(sleep_delay)
-
 
     async def get_copy_trader_order_history(
         self,
@@ -200,10 +203,13 @@ class BlofinClient(ExchangeBase):
                 from_param=current_id_from,
                 limit_param=chunk_limit,
             )
-            if not current_result or not isinstance(current_result, CopyTraderOrderHistoryResponse) or \
-                not current_result.data:
+            if (
+                not current_result
+                or not isinstance(current_result, CopyTraderOrderHistoryResponse)
+                or not current_result.data
+            ):
                 return result
-            
+
             if current_result.data[0].id == current_id_from:
                 if len(current_result.data) < 2:
                     return result
@@ -214,7 +220,7 @@ class BlofinClient(ExchangeBase):
                     "Expected first array to have the same value as from_param: "
                     f"current_id_from: {current_id_from}; but was: {current_result.data[0].id}"
                 )
-            
+
             current_id_from = current_result.data[-1].id
             result.data.extend(current_result.data)
             result.total_count += len(current_result.data)
@@ -333,6 +339,21 @@ class BlofinClient(ExchangeBase):
         aes = AESCipher(key=f"bf_{self.account_name}_bf", fav_letter=self._fav_letter)
         target_path = Path(file_path)
         target_path.write_text(aes.encrypt(json.dumps(json_data)))
+
+    # endregion
+    ###########################################################
+    # region unified methods
+    async def get_unified_trader_positions(
+        self,
+        uid: int | str,
+    ) -> UnifiedTraderPositions:
+        pass
+
+    async def get_unified_trader_info(
+        self,
+        uid: int | str,
+    ) -> UnifiedTraderInfo:
+        pass
 
     # endregion
     ###########################################################

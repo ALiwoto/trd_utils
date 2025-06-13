@@ -64,7 +64,7 @@ class CopyTraderInfoResult(BaseModel):
     joined_date: int = None
     max_draw_down: Decimal = None
     nick_name: str = None
-    order_amount_limit: None
+    order_amount_limit: Any = None
     profile: str = None
     profit_sharing_ratio: Decimal = None
     real_pnl: Decimal = None
@@ -89,7 +89,7 @@ class CopyTraderSingleOrderInfo(BaseModel):
     order_side: str = None
     avg_open_price: str = None
     quantity: str = None
-    quantity_cont: None
+    quantity_cont: Any = None
     open_time: int = None
     close_time: Any = None
     avg_close_price: Decimal = None
@@ -100,41 +100,41 @@ class CopyTraderSingleOrderInfo(BaseModel):
     followers: Any = None
     order_id: Any = None
     sharing: Any = None
-    order_state: None
-    trader_name: None
-    mark_price: None
-    tp_trigger_price: None
-    tp_order_type: None
-    sl_trigger_price: None
-    sl_order_type: None
+    order_state: Any = None
+    trader_name: Any = None
+    mark_price: Any = None
+    tp_trigger_price: Any = None
+    tp_order_type: Any = None
+    sl_trigger_price: Any = None
+    sl_order_type: Any = None
     margin_mode: str = None
-    time_in_force: None
+    time_in_force: Any = None
     position_side: str = None
-    order_category: None
-    price: None
-    fill_quantity: None
-    fill_quantity_cont: None
-    pnl: None
-    cancel_source: None
-    order_type: None
-    order_open_state: None
-    amount: None
-    filled_amount: None
-    create_time: None
-    update_time: None
-    open_fee: None
-    close_fee: None
-    id_md5: None
-    tp_sl: None
-    trader_uid: None
-    available_quantity: None
-    available_quantity_cont: None
-    show_in_kline: None
-    unrealized_pnl: None
-    unrealized_pnl_ratio: None
-    broker_id: None
-    position_change_history: None
-    user_id: None
+    order_category: Any = None
+    price: Any = None
+    fill_quantity: Any = None
+    fill_quantity_cont: Any = None
+    pnl: Any = None
+    cancel_source: Any = None
+    order_type: Any = None
+    order_open_state: Any = None
+    amount: Any = None
+    filled_amount: Any = None
+    create_time: Any = None
+    update_time: Any = None
+    open_fee: Any = None
+    close_fee: Any = None
+    id_md5: Any = None
+    tp_sl: Any = None
+    trader_uid: Any = None
+    available_quantity: Any = None
+    available_quantity_cont: Any = None
+    show_in_kline: Any = None
+    unrealized_pnl: Any = None
+    unrealized_pnl_ratio: Any = None
+    broker_id: Any = None
+    position_change_history: Any = None
+    user_id: Any = None
 
 class CopyTraderOrderListResponse(BlofinApiResponse):
     data: list[CopyTraderSingleOrderInfo] = None
