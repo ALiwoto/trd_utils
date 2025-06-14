@@ -50,6 +50,10 @@ async def test_unified_get_trader_positions1():
             )
 
             assert result is not None
+
+            # make sure everything is serializable
+            _ = type(result).deserialize(result.serialize())
+            
             for position in result.positions:
                 print(f"current position: {position}")
     await cleanup_clients(
@@ -70,6 +74,10 @@ async def test_unified_get_trader_info():
             )
 
             assert result is not None
+
+            # make sure everything is serializable
+            _ = type(result).deserialize(result.serialize())
+
             print(f"Trader info for {target}: {result}")
     await cleanup_clients(
         all_clients=all_clients,

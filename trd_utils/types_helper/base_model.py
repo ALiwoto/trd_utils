@@ -10,6 +10,7 @@ from typing import (
 
 import dateutil.parser
 
+from trd_utils.date_utils.datetime_helpers import dt_from_ts, dt_to_ts
 from trd_utils.html_utils.html_formats import camel_to_snake
 
 # Whether to use ultra-list instead of normal python list or not.
@@ -91,6 +92,9 @@ def value_to_normal_obj(value, omit_none: bool = False):
             result[inner_key] = normalized_value
 
         return result
+    
+    if isinstance(value, datetime.datetime):
+        return dt_to_ts(value)
 
     raise TypeError(f"unsupported type provided: {type(value)}")
 
@@ -244,9 +248,12 @@ class BaseModel:
 
                 if ULTRA_LIST_ENABLED and isinstance(value, list):
                     value = convert_to_ultra_list(value)
-            elif expected_type is datetime.datetime and isinstance(value, str):
+            elif expected_type is datetime.datetime:
                 try:
-                    value = dateutil.parser.parse(value)
+                    if isinstance(value, str):
+                        value = dateutil.parser.parse(value)
+                    elif isinstance(value, int):
+                        value = dt_from_ts(value)
                 except Exception as ex:
                     raise ValueError(
                         f"Failed to parse the string as datetime: {value}"
