@@ -1,0 +1,76 @@
+import pytest
+
+from trd_utils.exchanges import (
+    BXUltraClient,
+    BlofinClient,
+    HyperLiquidClient,
+)
+
+from trd_utils.exchanges.exchange_base import ExchangeBase
+from trd_utils.types_helper import base_model
+
+# since we are testing, performance overhead of UltraList is not a concern
+base_model.ULTRA_LIST_ENABLED = True
+
+unified_test1_targets = {
+    "blofin": [
+        2897425892,
+    ],
+    "bx": [
+        1414050434086264836,
+    ]
+}
+
+def initialize_clients() -> dict[str, ExchangeBase]:
+    result = {
+        "bx": BXUltraClient(),
+        "blofin": BlofinClient(),
+        "hyperliquid": HyperLiquidClient(),
+    }
+
+    # if initialization requires more things to be done, do it here
+
+    return result
+
+async def cleanup_clients(all_clients: dict[str, ExchangeBase]) -> None:
+    for client in all_clients.values():
+        await client.aclose()
+
+@pytest.mark.asyncio
+async def test_unified_get_trader_positions1():
+    all_clients = initialize_clients()
+    
+    for platform in unified_test1_targets:
+        client = all_clients[platform] # let the test fall for KeyError
+        
+        for target in unified_test1_targets[platform]:
+            result = await client.get_unified_trader_positions(
+                uid=target,
+            )
+
+            assert result is not None
+            for position in result.positions:
+                print(f"current position: {position}")
+    await cleanup_clients(
+        all_clients=all_clients,
+    )
+
+
+@pytest.mark.asyncio
+async def test_unified_get_trader_info():
+    all_clients = initialize_clients()
+    
+    for platform in unified_test1_targets:
+        client = all_clients[platform] # let the test fall for KeyError
+        
+        for target in unified_test1_targets[platform]:
+            result = await client.get_unified_trader_info(
+                uid=target,
+            )
+
+            assert result is not None
+            print(f"Trader info for {target}: {result}")
+    await cleanup_clients(
+        all_clients=all_clients,
+    )
+    

@@ -1,10 +1,11 @@
-"""BxUltra exchange subclass"""
+"""
+BxUltra exchange subclass
+"""
 
 import asyncio
 from decimal import Decimal
 import json
 import logging
-from typing import Type
 import uuid
 
 import httpx
@@ -12,6 +13,11 @@ import httpx
 import time
 from pathlib import Path
 
+from trd_utils.exchanges.base_types import (
+    UnifiedPositionInfo,
+    UnifiedTraderInfo,
+    UnifiedTraderPositions,
+)
 from trd_utils.exchanges.bx_ultra.bx_utils import do_ultra_ss
 from trd_utils.exchanges.bx_ultra.bx_types import (
     AssetsInfoResponse,
@@ -30,7 +36,6 @@ from trd_utils.exchanges.bx_ultra.bx_types import (
     ZenDeskABStatusResponse,
     ZenDeskAuthResponse,
     ZoneModuleListResponse,
-    BxApiResponse,
 )
 from trd_utils.cipher import AESCipher
 
@@ -49,8 +54,16 @@ WEB_APP_VERSION = "4.78.12"
 TG_APP_VERSION = "5.0.15"
 
 ACCEPT_ENCODING_HEADER = "gzip, deflate, br, zstd"
+BASE_PROFILE_URL = "https://bingx.com/en/CopyTrading/"
 
 logger = logging.getLogger(__name__)
+
+# The cache in which we will be storing the api identities.
+# The key of this dict is uid (long user identifier), to api-identity.
+# Why is this a global variable, and not a class attribute? because as far as
+# I've observed, api-identities in bx (unlike Telegram's access-hashes) are not
+# specific to the current session that is fetching them,
+user_api_identity_cache: dict[int, int] = {}
 
 
 class BXUltraClient(ExchangeBase):
@@ -119,7 +132,7 @@ class BXUltraClient(ExchangeBase):
             f"{self.we_api_base_url}/coin/v1/zone/module-info",
             headers=headers,
             params=params,
-            model=ZoneModuleListResponse,
+            model_type=ZoneModuleListResponse,
         )
 
     async def get_user_favorite_quotation(
@@ -136,7 +149,7 @@ class BXUltraClient(ExchangeBase):
             f"{self.we_api_base_url}/coin/v1/user/favorite/quotation",
             headers=headers,
             params=params,
-            model=UserFavoriteQuotationResponse,
+            model_type=UserFavoriteQuotationResponse,
         )
 
     async def get_quotation_rank(
@@ -153,7 +166,7 @@ class BXUltraClient(ExchangeBase):
             f"{self.we_api_base_url}/coin/v1/rank/quotation-rank",
             headers=headers,
             params=params,
-            model=QuotationRankResponse,
+            model_type=QuotationRankResponse,
         )
 
     async def get_hot_search(
@@ -170,7 +183,7 @@ class BXUltraClient(ExchangeBase):
             f"{self.we_api_base_url}/coin/v1/quotation/hot-search",
             headers=headers,
             params=params,
-            model=HotSearchResponse,
+            model_type=HotSearchResponse,
         )
 
     async def get_homepage(
@@ -187,7 +200,7 @@ class BXUltraClient(ExchangeBase):
             f"{self.we_api_base_url}/coin/v1/discovery/homepage",
             headers=headers,
             params=params,
-            model=HomePageResponse,
+            model_type=HomePageResponse,
         )
 
     # endregion
@@ -198,15 +211,17 @@ class BXUltraClient(ExchangeBase):
         return await self.invoke_get(
             f"{self.we_api_base_url}/customer/v1/zendesk/ab-status",
             headers=headers,
-            model=ZenDeskABStatusResponse,
+            model_type=ZenDeskABStatusResponse,
         )
+
     async def do_zendesk_auth(self) -> ZenDeskAuthResponse:
         headers = self.get_headers(needs_auth=True)
         return await self.invoke_get(
             f"{self.we_api_base_url}/customer/v1/zendesk/auth/jwt",
             headers=headers,
-            model=ZenDeskAuthResponse,
+            model_type=ZenDeskAuthResponse,
         )
+
     # endregion
     ###########################################################
     # region platform-tool
@@ -215,7 +230,7 @@ class BXUltraClient(ExchangeBase):
         return await self.invoke_get(
             f"{self.we_api_base_url}/platform-tool/v1/hint/list",
             headers=headers,
-            model=HintListResponse,
+            model_type=HintListResponse,
         )
 
     # endregion
@@ -226,7 +241,7 @@ class BXUltraClient(ExchangeBase):
         return await self.invoke_get(
             f"{self.we_api_base_url}/asset-manager/v1/assets/account-total-overview",
             headers=headers,
-            model=AssetsInfoResponse,
+            model_type=AssetsInfoResponse,
         )
 
     # endregion
@@ -255,7 +270,7 @@ class BXUltraClient(ExchangeBase):
             f"{self.we_api_base_url}/v4/contract/order/hold",
             headers=headers,
             params=params,
-            model=ContractsListResponse,
+            model_type=ContractsListResponse,
         )
 
     async def get_contract_order_history(
@@ -282,7 +297,7 @@ class BXUltraClient(ExchangeBase):
             f"{self.we_api_base_url}/v2/contract/order/history",
             headers=headers,
             params=params,
-            model=ContractOrdersHistoryResponse,
+            model_type=ContractOrdersHistoryResponse,
         )
 
     async def get_today_contract_earnings(
@@ -389,7 +404,7 @@ class BXUltraClient(ExchangeBase):
     # endregion
     ###########################################################
     # region copy-trade-facade
-    async def get_copy_trade_trader_positions(
+    async def get_copy_trader_positions(
         self,
         uid: int | str,
         api_identity: str,
@@ -409,7 +424,7 @@ class BXUltraClient(ExchangeBase):
             f"{self.we_api_base_url}/copy-trade-facade/v2/real/trader/positions",
             headers=headers,
             params=params,
-            model=CopyTraderTradePositionsResponse,
+            model_type=CopyTraderTradePositionsResponse,
         )
 
     async def search_copy_traders(
@@ -446,7 +461,7 @@ class BXUltraClient(ExchangeBase):
             headers=headers,
             params=params,
             content=payload,
-            model=SearchCopyTradersResponse,
+            model_type=SearchCopyTradersResponse,
         )
 
     async def get_copy_trader_futures_stats(
@@ -454,6 +469,11 @@ class BXUltraClient(ExchangeBase):
         uid: int | str,
         api_identity: str,
     ) -> CopyTraderFuturesStatsResponse:
+        """
+        Returns futures statistics of a certain trader.
+        If you do not have the api_identity parameter, please first invoke
+        get_copy_trader_resume method and get it from there.
+        """
         params = {
             "uid": f"{uid}",
             "apiIdentity": f"{api_identity}",
@@ -463,7 +483,7 @@ class BXUltraClient(ExchangeBase):
             f"{self.we_api_base_url}/copy-trade-facade/v4/trader/account/futures/stat",
             headers=headers,
             params=params,
-            model=CopyTraderFuturesStatsResponse,
+            model_type=CopyTraderFuturesStatsResponse,
         )
 
     async def get_copy_trader_resume(
@@ -478,8 +498,21 @@ class BXUltraClient(ExchangeBase):
             f"{self.we_api_base_url}/copy-trade-facade/v1/trader/resume",
             headers=headers,
             params=params,
-            model=CopyTraderResumeResponse,
+            model_type=CopyTraderResumeResponse,
         )
+
+    async def get_trader_api_identity(
+        self,
+        uid: int | str,
+    ) -> int | str:
+        api_identity = user_api_identity_cache.get(uid, None)
+        if not api_identity:
+            resume = await self.get_copy_trader_resume(
+                uid=uid,
+            )
+            api_identity = resume.data.api_identity
+            user_api_identity_cache[uid] = api_identity
+        return api_identity
 
     # endregion
     ###########################################################
@@ -490,7 +523,7 @@ class BXUltraClient(ExchangeBase):
             f"{self.original_base_host}/api/act-operation/v1/welfare/sign-in/do",
             headers=headers,
             content="",
-            model=None,
+            model_type=None,
         )
 
     # endregion
@@ -539,56 +572,6 @@ class BXUltraClient(ExchangeBase):
         if needs_auth:
             the_headers["Authorization"] = f"Bearer {self.authorization_token}"
         return the_headers
-
-    async def invoke_get(
-        self,
-        url: str,
-        headers: dict | None = None,
-        params: dict | None = None,
-        model: Type[BxApiResponse] | None = None,
-        parse_float=Decimal,
-    ) -> "BxApiResponse":
-        """
-        Invokes the specific request to the specific url with the specific params and headers.
-        """
-        response = await self.httpx_client.get(
-            url=url,
-            headers=headers,
-            params=params,
-        )
-        return model.deserialize(response.json(parse_float=parse_float))
-
-    async def invoke_post(
-        self,
-        url: str,
-        headers: dict | None = None,
-        params: dict | None = None,
-        content: dict | str | bytes = "",
-        model: Type[BxApiResponse] | None = None,
-        parse_float=Decimal,
-    ) -> "BxApiResponse":
-        """
-        Invokes the specific request to the specific url with the specific params and headers.
-        """
-
-        if isinstance(content, dict):
-            content = json.dumps(content, separators=(",", ":"), sort_keys=True)
-
-        response = await self.httpx_client.post(
-            url=url,
-            headers=headers,
-            params=params,
-            content=content,
-        )
-        if not model:
-            return response.json()
-
-        return model.deserialize(response.json(parse_float=parse_float))
-
-    async def aclose(self) -> None:
-        await self.httpx_client.aclose()
-        logger.info("BXUltraClient closed")
-        return True
 
     def read_from_session_file(self, file_path: str) -> None:
         """
@@ -651,6 +634,77 @@ class BXUltraClient(ExchangeBase):
         aes = AESCipher(key=f"bx_{self.account_name}_bx", fav_letter=self._fav_letter)
         target_path = Path(file_path)
         target_path.write_text(aes.encrypt(json.dumps(json_data)))
+
+    # endregion
+    ###########################################################
+    # region unified methods
+
+    async def get_unified_trader_positions(
+        self,
+        uid: int | str,
+    ) -> UnifiedTraderPositions:
+        global user_api_identity_cache
+
+        api_identity = await self.get_trader_api_identity(
+            uid=uid,
+        )
+
+        result = await self.get_copy_trader_positions(
+            uid=uid,
+            api_identity=api_identity,
+            page_size=50,  # TODO: make this dynamic I guess...
+        )
+        if result.data.hide:
+            # TODO: do proper exceptions here...
+            raise ValueError("The trader has made their positions hidden")
+        unified_result = UnifiedTraderPositions()
+        unified_result.positions = []
+        for position in result.data.positions:
+            unified_pos = UnifiedPositionInfo()
+            unified_pos.position_id = position.position_no
+            unified_pos.position_pnl = position.unrealized_pnl
+            unified_pos.position_side = position.position_side
+            unified_pos.margin_mode = "isolated"  # TODO: fix this
+            unified_pos.position_leverage = position.leverage
+            unified_pos.position_pair = (
+                position.symbol
+            )  # TODO: make sure correct format
+            unified_pos.open_time = None  # TODO: do something for this?
+            unified_pos.open_price = position.avg_price
+            unified_pos.open_price_unit = position.symbol.split("-")[-1]  # TODO
+            unified_result.positions.append(unified_pos)
+
+        return unified_result
+
+    async def get_unified_trader_info(
+        self,
+        uid: int | str,
+    ) -> UnifiedTraderInfo:
+        resume_resp = await self.get_copy_trader_resume(
+            uid=uid,
+        )
+        if resume_resp.code != 0 and not resume_resp.data:
+            if resume_resp.msg:
+                raise ValueError(f"got error from API: {resume_resp.msg}")
+            raise ValueError(
+                f"got unknown error from bx API while fetching resume for {uid}"
+            )
+
+        resume = resume_resp.data
+        api_identity = resume.api_identity
+
+        info_resp = await self.get_copy_trader_futures_stats(
+            uid=uid,
+            api_identity=api_identity,
+        )
+        info = info_resp.data
+        unified_info = UnifiedTraderInfo()
+        unified_info.trader_id = resume.trader_info.uid
+        unified_info.trader_name = resume.trader_info.nick_name
+        unified_info.trader_url = f"{BASE_PROFILE_URL}{uid}"
+        unified_info.win_rate = Decimal(info.win_rate.rstrip("%")) / 100
+
+        return unified_info
 
     # endregion
     ###########################################################

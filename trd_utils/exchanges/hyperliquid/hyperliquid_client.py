@@ -102,56 +102,6 @@ class HyperLiquidClient(ExchangeBase):
             the_headers["Authorization"] = f"Bearer {self.authorization_token}"
         return the_headers
 
-    async def invoke_get(
-        self,
-        url: str,
-        headers: dict | None = None,
-        params: dict | None = None,
-        model: Type[HyperLiquidApiResponse] | None = None,
-        parse_float=Decimal,
-    ) -> "HyperLiquidApiResponse":
-        """
-        Invokes the specific request to the specific url with the specific params and headers.
-        """
-        response = await self.httpx_client.get(
-            url=url,
-            headers=headers,
-            params=params,
-        )
-        return model.deserialize(response.json(parse_float=parse_float))
-
-    async def invoke_post(
-        self,
-        url: str,
-        headers: dict | None = None,
-        params: dict | None = None,
-        content: dict | str | bytes = "",
-        model: Type[HyperLiquidApiResponse] | None = None,
-        parse_float=Decimal,
-    ) -> "HyperLiquidApiResponse":
-        """
-        Invokes the specific request to the specific url with the specific params and headers.
-        """
-
-        if isinstance(content, dict):
-            content = json.dumps(content, separators=(",", ":"), sort_keys=True)
-
-        response = await self.httpx_client.post(
-            url=url,
-            headers=headers,
-            params=params,
-            content=content,
-        )
-        if not model:
-            return response.json()
-
-        return model.deserialize(response.json(parse_float=parse_float))
-
-    async def aclose(self) -> None:
-        await self.httpx_client.aclose()
-        logger.info("HyperLiquidClient closed")
-        return True
-
     def read_from_session_file(self, file_path: str) -> None:
         """
         Reads from session file; if it doesn't exist, creates it.

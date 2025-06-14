@@ -1,10 +1,12 @@
 from decimal import Decimal
-from typing import Any
+import json
+from typing import Any, Type
 from abc import ABC
 
 import httpx
 
 from trd_utils.exchanges.base_types import UnifiedTraderInfo, UnifiedTraderPositions
+from trd_utils.types_helper.base_model import BaseModel
 
 
 class ExchangeBase(ABC):
@@ -66,32 +68,55 @@ class ExchangeBase(ABC):
     async def invoke_get(
         self,
         url: str,
-        headers: dict | None,
-        params: dict | None,
-        model: Any,
+        headers: dict | None = None,
+        params: dict | None = None,
+        model_type: Type[BaseModel] | None = None,
         parse_float=Decimal,
-    ) -> Any:
+    ) -> "BaseModel":
         """
         Invokes the specific request to the specific url with the specific params and headers.
         """
-        pass
+        response = await self.httpx_client.get(
+            url=url,
+            headers=headers,
+            params=params,
+        )
+        return model_type.deserialize(response.json(parse_float=parse_float))
 
     async def invoke_post(
         self,
         url: str,
         headers: dict | None = None,
         params: dict | None = None,
-        content: str | bytes = "",
-        model: None = None,
+        content: dict | str | bytes = "",
+        model_type: Type[BaseModel] | None = None,
         parse_float=Decimal,
-    ):
+    ) -> "BaseModel":
         """
         Invokes the specific request to the specific url with the specific params and headers.
         """
-        pass
+
+        if isinstance(content, dict):
+            content = json.dumps(content, separators=(",", ":"), sort_keys=True)
+
+        response = await self.httpx_client.post(
+            url=url,
+            headers=headers,
+            params=params,
+            content=content,
+        )
+        if not model_type:
+            return response.json()
+
+        return model_type.deserialize(response.json(parse_float=parse_float))
+
 
     async def aclose(self) -> None:
-        pass
+        await self.httpx_client.aclose()
+
+    # endregion
+    ###########################################################
+    # region data-files related methods
 
     def read_from_session_file(self, file_path: str) -> None:
         """

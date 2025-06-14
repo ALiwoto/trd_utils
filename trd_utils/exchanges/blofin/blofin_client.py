@@ -2,15 +2,18 @@ import asyncio
 from decimal import Decimal
 import json
 import logging
-from typing import Type
 import httpx
 
 import time
 from pathlib import Path
 
-from trd_utils.exchanges.base_types import UnifiedTraderInfo, UnifiedTraderPositions
+from trd_utils.date_utils.datetime_helpers import dt_from_ts
+from trd_utils.exchanges.base_types import (
+    UnifiedPositionInfo,
+    UnifiedTraderInfo,
+    UnifiedTraderPositions,
+)
 from trd_utils.exchanges.blofin.blofin_types import (
-    BlofinApiResponse,
     CmsColorResponse,
     CopyTraderAllOrderHistory,
     CopyTraderAllOrderList,
@@ -21,6 +24,9 @@ from trd_utils.exchanges.blofin.blofin_types import (
 )
 from trd_utils.cipher import AESCipher
 from trd_utils.exchanges.exchange_base import ExchangeBase
+
+
+BASE_PROFILE_URL = "https://blofin.com/copy-trade/details/"
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +71,7 @@ class BlofinClient(ExchangeBase):
         return await self.invoke_get(
             f"{self.blofin_api_base_url}/cms/share_config",
             headers=headers,
-            model=ShareConfigResponse,
+            model_type=ShareConfigResponse,
         )
 
     async def get_cms_color(self) -> CmsColorResponse:
@@ -73,7 +79,7 @@ class BlofinClient(ExchangeBase):
         return await self.invoke_get(
             f"{self.blofin_api_base_url}/cms/color",
             headers=headers,
-            model=CmsColorResponse,
+            model_type=CmsColorResponse,
         )
 
     # endregion
@@ -88,26 +94,26 @@ class BlofinClient(ExchangeBase):
             f"{self.blofin_api_base_url}/copy/trader/info",
             headers=headers,
             content=payload,
-            model=CopyTraderInfoResponse,
+            model_type=CopyTraderInfoResponse,
         )
 
     async def get_copy_trader_order_list(
         self,
-        uid: int,
+        uid: int | str,
         from_param: int = 0,
         limit_param: int = 20,
     ) -> CopyTraderOrderListResponse:
         payload = {
             "from": from_param,
             "limit": limit_param,
-            "uid": uid,
+            "uid": int(uid),
         }
         headers = self.get_headers()
         return await self.invoke_post(
             f"{self.blofin_api_base_url}/copy/trader/order/list",
             headers=headers,
             content=payload,
-            model=CopyTraderOrderListResponse,
+            model_type=CopyTraderOrderListResponse,
         )
 
     async def get_copy_trader_all_order_list(
@@ -133,11 +139,13 @@ class BlofinClient(ExchangeBase):
                 from_param=current_id_from,
                 limit_param=chunk_limit,
             )
-            if (
-                not current_result
-                or not isinstance(current_result, CopyTraderOrderListResponse)
-                or not current_result.data
-            ):
+            if not isinstance(current_result, CopyTraderOrderListResponse):
+                raise ValueError(
+                    "get_copy_trader_order_list returned invalid value of "
+                    f"{type(current_result)}",
+                )
+            if not current_result.data:
+                # we no longer have anything else here
                 return result
 
             if current_result.data[0].id == current_id_from:
@@ -177,7 +185,7 @@ class BlofinClient(ExchangeBase):
             f"{self.blofin_api_base_url}/copy/trader/order/history",
             headers=headers,
             content=payload,
-            model=CopyTraderOrderHistoryResponse,
+            model_type=CopyTraderOrderHistoryResponse,
         )
 
     async def get_copy_trader_all_order_history(
@@ -256,56 +264,6 @@ class BlofinClient(ExchangeBase):
             the_headers["Authorization"] = f"Bearer {self.authorization_token}"
         return the_headers
 
-    async def invoke_get(
-        self,
-        url: str,
-        headers: dict | None = None,
-        params: dict | None = None,
-        model: Type[BlofinApiResponse] | None = None,
-        parse_float=Decimal,
-    ) -> "BlofinApiResponse":
-        """
-        Invokes the specific request to the specific url with the specific params and headers.
-        """
-        response = await self.httpx_client.get(
-            url=url,
-            headers=headers,
-            params=params,
-        )
-        return model.deserialize(response.json(parse_float=parse_float))
-
-    async def invoke_post(
-        self,
-        url: str,
-        headers: dict | None = None,
-        params: dict | None = None,
-        content: dict | str | bytes = "",
-        model: Type[BlofinApiResponse] | None = None,
-        parse_float=Decimal,
-    ) -> "BlofinApiResponse":
-        """
-        Invokes the specific request to the specific url with the specific params and headers.
-        """
-
-        if isinstance(content, dict):
-            content = json.dumps(content, separators=(",", ":"), sort_keys=True)
-
-        response = await self.httpx_client.post(
-            url=url,
-            headers=headers,
-            params=params,
-            content=content,
-        )
-        if not model:
-            return response.json()
-
-        return model.deserialize(response.json(parse_float=parse_float))
-
-    async def aclose(self) -> None:
-        await self.httpx_client.aclose()
-        logger.info("BlofinClient closed")
-        return True
-
     def read_from_session_file(self, file_path: str) -> None:
         """
         Reads from session file; if it doesn't exist, creates it.
@@ -347,13 +305,43 @@ class BlofinClient(ExchangeBase):
         self,
         uid: int | str,
     ) -> UnifiedTraderPositions:
-        pass
+        result = await self.get_copy_trader_all_order_list(
+            uid=uid,
+        )
+        unified_result = UnifiedTraderPositions()
+        unified_result.positions = []
+        for position in result.data:
+            unified_pos = UnifiedPositionInfo()
+            unified_pos.position_id = position.id or position.order_id
+            unified_pos.position_pnl = position.real_pnl or position.pnl
+            unified_pos.position_side = (
+                "LONG" if position.order_side in ("LONG", "BUY") else "SHORT"
+            )
+            unified_pos.margin_mode = position.margin_mode
+            unified_pos.position_leverage = Decimal(position.leverage)
+            unified_pos.position_pair = position.symbol.replace("-", "/")
+            unified_pos.open_time = dt_from_ts(position.open_time)
+            unified_pos.open_price = position.avg_open_price
+            unified_pos.open_price_unit = position.symbol.split("-")[-1]
+            unified_result.positions.append(unified_pos)
+
+        return unified_result
 
     async def get_unified_trader_info(
         self,
         uid: int | str,
     ) -> UnifiedTraderInfo:
-        pass
+        info_resp = await self.get_copy_trader_info(
+            uid=uid,
+        )
+        info = info_resp.data
+        unified_info = UnifiedTraderInfo()
+        unified_info.trader_id = info.uid
+        unified_info.trader_name = info.nick_name
+        unified_info.trader_url = f"{BASE_PROFILE_URL}{info.uid}"
+        unified_info.win_rate = info.win_rate
+
+        return unified_info
 
     # endregion
     ###########################################################

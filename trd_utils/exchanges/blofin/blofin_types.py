@@ -114,7 +114,7 @@ class CopyTraderSingleOrderInfo(BaseModel):
     price: Any = None
     fill_quantity: Any = None
     fill_quantity_cont: Any = None
-    pnl: Any = None
+    pnl: Decimal = None
     cancel_source: Any = None
     order_type: Any = None
     order_open_state: Any = None

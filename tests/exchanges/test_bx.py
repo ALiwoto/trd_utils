@@ -104,7 +104,7 @@ async def test_bx_search_copy_traders():
     # get the first trader's positions
     if result.data.result:
         first_trader = result.data.result[0]
-        trader_positions = await client.get_copy_trade_trader_positions(
+        trader_positions = await client.get_copy_trader_positions(
             uid=first_trader.get_uid(),
             api_identity=first_trader.get_api_identity(),
         )
@@ -119,7 +119,7 @@ async def test_bx_search_copy_traders():
 async def test_bx_get_copy_trade_trader_positions():
     client = BXUltraClient()
 
-    result = await client.get_copy_trade_trader_positions(
+    result = await client.get_copy_trader_positions(
         uid=1139467159170899972,
         api_identity=1146548274759884800,
         # uid=1139467159170900000,
@@ -140,7 +140,7 @@ async def test_bx_get_copy_trade_trader_positions():
 async def test_bx_get_copy_trade_trader_positions2():
     client = BXUltraClient()
 
-    result = await client.get_copy_trade_trader_positions(
+    result = await client.get_copy_trader_positions(
         uid=1414050434086264836,
         api_identity=1449963490674978822,
         # uid=1139467159170900000,
@@ -211,7 +211,7 @@ async def test_bx_get_copy_trader_resume2():
     print(f"Trader name: {result.data.trader_info.nick_name}")
     print(f"Amount of followers: {result.data.subscriber_num}")
 
-    positions_resp = await client.get_copy_trade_trader_positions(
+    positions_resp = await client.get_copy_trader_positions(
         uid=USER_ID,
         api_identity=result.data.api_identity,
         copy_trade_label_type=result.data.labels[0],

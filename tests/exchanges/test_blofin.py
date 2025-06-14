@@ -70,8 +70,8 @@ async def test_blofin_get_copy_trader_all_order_list():
     client = BlofinClient()
 
     result = await client.get_copy_trader_all_order_list(
-        uid=2897425892,
-        chunk_limit=2,
+        uid=10695760389,
+        # chunk_limit=2,
     )
 
     assert result is not None

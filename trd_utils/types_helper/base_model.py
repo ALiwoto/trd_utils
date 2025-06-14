@@ -138,7 +138,7 @@ def generic_obj_to_value(
         return expected_type(**value)
 
     if not expected_type_args:
-        if isinstance(value, expected_type):
+        if value is None or isinstance(value, expected_type):
             return value
         return expected_type(value)
 
