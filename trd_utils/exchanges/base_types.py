@@ -1,9 +1,8 @@
-
-
 from datetime import datetime
 from decimal import Decimal
 
 from trd_utils.types_helper.base_model import BaseModel
+
 
 class UnifiedPositionInfo(BaseModel):
     # The id of the position.
@@ -40,20 +39,22 @@ class UnifiedPositionInfo(BaseModel):
 
     def __str__(self):
         parts = []
-        
+
         # Add position pair and ID
-        parts.append(f"Position: {self.position_pair or 'Unknown'} (ID: {self.position_id or 'N/A'})")
-        
+        parts.append(
+            f"Position: {self.position_pair or 'Unknown'} (ID: {self.position_id or 'N/A'})"
+        )
+
         # Add side and leverage
         side_str = f"Side: {self.position_side or 'Unknown'}"
         if self.position_leverage is not None:
             side_str += f", {self.position_leverage}x"
         parts.append(side_str)
-        
+
         # Add margin mode if available
         if self.margin_mode:
             parts.append(f"Margin: {self.margin_mode}")
-        
+
         # Add open price if available
         price_str = "Open price: "
         if self.open_price is not None:
@@ -63,22 +64,24 @@ class UnifiedPositionInfo(BaseModel):
         else:
             price_str += "N/A"
         parts.append(price_str)
-        
+
         # Add open time if available
         if self.open_time:
             parts.append(f"Opened: {self.open_time.strftime('%Y-%m-%d %H:%M:%S')}")
-        
+
         # Add PNL if available
         if self.position_pnl is not None:
             parts.append(f"PNL: {self.position_pnl}")
-        
+
         return " | ".join(parts)
 
     def __repr__(self):
         return self.__str__()
 
+
 class UnifiedTraderPositions(BaseModel):
     positions: list[UnifiedPositionInfo] = None
+
 
 class UnifiedTraderInfo(BaseModel):
     # Trader's id. Either int or str. In DEXes (such as HyperLiquid),
@@ -94,13 +97,15 @@ class UnifiedTraderInfo(BaseModel):
     # Trader's win-rate. Not all exchanges might support this field.
     win_rate: Decimal = None
 
+    def get_win_rate_str(self) -> str:
+        return str(round(self.win_rate, 2)) if self.win_rate is not None else "N/A"
+
     def __str__(self):
         return (
-            f"Trader: {self.trader_name} (ID: {self.trader_id})"
-            f"{' | Win Rate: ' + str(round(self.win_rate, 2))}"
-            f"{' | Profile: ' + self.trader_url}"
+            f"{self.trader_name} ({self.trader_id})"
+            f" | Win Rate: {self.get_win_rate_str()}"
+            f" | Profile: {self.trader_url}"
         )
-    
+
     def __repr__(self):
         return self.__str__()
-    

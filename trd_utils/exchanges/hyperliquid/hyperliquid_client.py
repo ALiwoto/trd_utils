@@ -8,10 +8,14 @@ import httpx
 from pathlib import Path
 
 from trd_utils.cipher import AESCipher
+from trd_utils.common_utils.wallet_utils import shorten_wallet_address
+from trd_utils.exchanges.base_types import UnifiedPositionInfo, UnifiedTraderInfo, UnifiedTraderPositions
 from trd_utils.exchanges.exchange_base import ExchangeBase
 from trd_utils.exchanges.hyperliquid.hyperliquid_types import HyperLiquidApiResponse, TraderPositionsInfoResponse
 
 logger = logging.getLogger(__name__)
+
+BASE_PROFILE_URL = "https://hypurrscan.io/address/"
 
 
 class HyperLiquidClient(ExchangeBase):
@@ -63,7 +67,7 @@ class HyperLiquidClient(ExchangeBase):
             f"{self.hyperliquid_api_base_host}/info",
             headers=headers,
             content=payload,
-            model=TraderPositionsInfoResponse,
+            model_type=TraderPositionsInfoResponse,
         )
 
     #endregion
@@ -78,7 +82,7 @@ class HyperLiquidClient(ExchangeBase):
     #         f"{self.hyperliquid_api_base_url}/another-thing/info",
     #         headers=headers,
     #         content=payload,
-    #         model=CopyTraderInfoResponse,
+    #         model_type=CopyTraderInfoResponse,
     #     )
 
     # endregion
@@ -135,6 +139,51 @@ class HyperLiquidClient(ExchangeBase):
         if not target_path.exists():
             target_path.mkdir(parents=True)
         target_path.write_text(aes.encrypt(json.dumps(json_data)))
+
+    # endregion
+    ###########################################################
+    # region unified methods
+    async def get_unified_trader_positions(
+        self,
+        uid: int | str,
+    ) -> UnifiedTraderPositions:
+        result = await self.get_trader_positions_info(
+            uid=uid,
+        )
+        unified_result = UnifiedTraderPositions()
+        unified_result.positions = []
+        for position_container in result.asset_positions:
+            position = position_container.position
+            unified_pos = UnifiedPositionInfo()
+            unified_pos.position_id = position.get_position_id()
+            unified_pos.position_pnl = round(position.unrealized_pnl, 3)
+            unified_pos.position_side = position.get_side()
+            unified_pos.margin_mode = position.leverage.type
+            unified_pos.position_leverage = Decimal(position.leverage.value)
+            unified_pos.position_pair = f"{position.coin}/USDT"
+            unified_pos.open_time = None # hyperliquid doesn't provide this...
+            unified_pos.open_price = position.entry_px
+            unified_pos.open_price_unit = "USDT"
+            unified_result.positions.append(unified_pos)
+
+        return unified_result
+
+    async def get_unified_trader_info(
+        self,
+        uid: int | str,
+    ) -> UnifiedTraderInfo:
+        if not isinstance(uid, str):
+            uid = str(uid)
+        # sadly hyperliquid doesn't really have an endpoint to fetch information
+        # so we have to somehow *fake* these...
+        # maybe in future try to find a better way?
+        unified_info = UnifiedTraderInfo()
+        unified_info.trader_id = uid
+        unified_info.trader_name = shorten_wallet_address(uid)
+        unified_info.trader_url = f"{BASE_PROFILE_URL}{uid}"
+        unified_info.win_rate = None
+
+        return unified_info
 
     # endregion
     ###########################################################

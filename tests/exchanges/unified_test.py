@@ -13,6 +13,9 @@ from trd_utils.types_helper import base_model
 base_model.ULTRA_LIST_ENABLED = True
 
 unified_test1_targets = {
+    "hyperliquid": [
+        "0xefd3ab65915e35105caa462442c9ecc1346728df",
+    ],
     "blofin": [
         2897425892,
     ],
@@ -53,7 +56,7 @@ async def test_unified_get_trader_positions1():
 
             # make sure everything is serializable
             _ = type(result).deserialize(result.serialize())
-            
+
             for position in result.positions:
                 print(f"current position: {position}")
     await cleanup_clients(
