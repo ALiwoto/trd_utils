@@ -17,6 +17,7 @@ unified_test1_targets = {
         2897425892,
     ],
     "bx": [
+        # 1023995029120749569, hidden positions
         1414050434086264836,
     ]
 }
@@ -41,7 +42,7 @@ async def test_unified_get_trader_positions1():
     all_clients = initialize_clients()
     
     for platform in unified_test1_targets:
-        client = all_clients[platform] # let the test fall for KeyError
+        client = all_clients[platform] # let it fail if KeyError happens
         
         for target in unified_test1_targets[platform]:
             result = await client.get_unified_trader_positions(
@@ -61,7 +62,7 @@ async def test_unified_get_trader_info():
     all_clients = initialize_clients()
     
     for platform in unified_test1_targets:
-        client = all_clients[platform] # let the test fall for KeyError
+        client = all_clients[platform] # let it fail if KeyError happens
         
         for target in unified_test1_targets[platform]:
             result = await client.get_unified_trader_info(

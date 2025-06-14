@@ -656,7 +656,7 @@ class BXUltraClient(ExchangeBase):
             api_identity=api_identity,
             page_size=50,  # TODO: make this dynamic I guess...
         )
-        if result.data.hide:
+        if result.data.hide == 0 and not result.data.positions:
             # TODO: do proper exceptions here...
             raise ValueError("The trader has made their positions hidden")
         unified_result = UnifiedTraderPositions()
@@ -668,12 +668,12 @@ class BXUltraClient(ExchangeBase):
             unified_pos.position_side = position.position_side
             unified_pos.margin_mode = "isolated"  # TODO: fix this
             unified_pos.position_leverage = position.leverage
-            unified_pos.position_pair = (
-                position.symbol
-            )  # TODO: make sure correct format
+            unified_pos.position_pair = position.symbol.replace("-", "/")
             unified_pos.open_time = None  # TODO: do something for this?
             unified_pos.open_price = position.avg_price
-            unified_pos.open_price_unit = position.symbol.split("-")[-1]  # TODO
+            unified_pos.open_price_unit = (
+                position.valuation_coin_name or position.symbol.split("-")[-1]
+            )  # TODO
             unified_result.positions.append(unified_pos)
 
         return unified_result
