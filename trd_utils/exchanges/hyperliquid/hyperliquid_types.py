@@ -58,19 +58,8 @@ class PositionInfo(BaseModel):
         In any case, we will have to somehow fake it in order to be able to compare
         it with other positions...
         """
-        entry = self.entry_px
-        if entry > 100:
-            entry = round(entry, 1)
-        elif entry > 10:
-            entry = round(entry, 2)
-        elif entry > 1:
-            entry = round(entry, 3)
-        elif entry > 0.1:
-            entry = round(entry, 4)
-        elif entry > 0.01:
-            entry = round(entry, 5)
         return (
-            f"{self.coin}-{self.leverage.value}{self.entry_px}"
+            f"{self.coin}-{self.leverage.value}-{1 if self.szi > 0 else 0}"
         ).encode("utf-8").hex()
 
     def get_leverage(self) -> str:
