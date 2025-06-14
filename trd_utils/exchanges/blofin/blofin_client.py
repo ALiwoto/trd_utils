@@ -296,6 +296,8 @@ class BlofinClient(ExchangeBase):
         }
         aes = AESCipher(key=f"bf_{self.account_name}_bf", fav_letter=self._fav_letter)
         target_path = Path(file_path)
+        if not target_path.exists():
+            target_path.mkdir(parents=True)
         target_path.write_text(aes.encrypt(json.dumps(json_data)))
 
     # endregion
