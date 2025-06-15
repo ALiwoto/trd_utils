@@ -44,7 +44,7 @@ class UserPositionInfo(BaseModel):
     mark_px: Decimal = None
     mgn_mode: str = None
     mgn_ratio: Decimal = None
-    notional_usd: int = None
+    notional_usd: Decimal = None
     pnl: Decimal = None
     pos: Decimal = None
     pos_ccy: str = None
