@@ -251,7 +251,10 @@ class BaseModel:
             elif expected_type is datetime.datetime:
                 try:
                     if isinstance(value, str):
-                        value = dateutil.parser.parse(value)
+                        if value.isdigit():
+                            value = dt_from_ts(int(value))
+                        else:
+                            value = dateutil.parser.parse(value)
                     elif isinstance(value, int):
                         value = dt_from_ts(value)
                 except Exception as ex:

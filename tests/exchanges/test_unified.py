@@ -7,12 +7,16 @@ from trd_utils.exchanges import (
 )
 
 from trd_utils.exchanges.exchange_base import ExchangeBase
+from trd_utils.exchanges.okx.okx_client import OkxClient
 from trd_utils.types_helper import base_model
 
 # since we are testing, performance overhead of UltraList is not a concern
 base_model.ULTRA_LIST_ENABLED = True
 
 unified_test1_targets = {
+    "okx": [
+        "2B6BDA00968EA9F8"
+    ],
     "hyperliquid": [
         "0xefd3ab65915e35105caa462442c9ecc1346728df",
     ],
@@ -30,6 +34,7 @@ def initialize_clients() -> dict[str, ExchangeBase]:
         "bx": BXUltraClient(),
         "blofin": BlofinClient(),
         "hyperliquid": HyperLiquidClient(),
+        "okx": OkxClient(),
     }
 
     # if initialization requires more things to be done, do it here
@@ -58,7 +63,7 @@ async def test_unified_get_trader_positions1():
             _ = type(result).deserialize(result.serialize())
 
             for position in result.positions:
-                print(f"current position: {position}")
+                print(f"({target}): current position: {position}")
     await cleanup_clients(
         all_clients=all_clients,
     )
@@ -81,7 +86,7 @@ async def test_unified_get_trader_info():
             # make sure everything is serializable
             _ = type(result).deserialize(result.serialize())
 
-            print(f"Trader info for {target}: {result}")
+            print(f"({platform}) Trader info for {target}: {result}")
     await cleanup_clients(
         all_clients=all_clients,
     )
