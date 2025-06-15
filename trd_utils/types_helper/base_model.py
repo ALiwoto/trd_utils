@@ -47,6 +47,14 @@ def get_real_attr(cls, attr_name):
     return None
 
 
+def is_base_model_type(expected_type: type) -> bool:
+    return (
+        expected_type is not None
+        and expected_type != Any
+        and issubclass(expected_type, BaseModel)
+    )
+
+
 def is_any_type(target_type: type) -> bool:
     return target_type == Any or target_type is type(None)
 
@@ -92,16 +100,17 @@ def value_to_normal_obj(value, omit_none: bool = False):
             result[inner_key] = normalized_value
 
         return result
-    
+
     if isinstance(value, datetime.datetime):
         return dt_to_ts(value)
 
     raise TypeError(f"unsupported type provided: {type(value)}")
 
+
 def convert_to_expected_type(
     expected_type: type,
     value: Any,
-    default_value = None,
+    default_value=None,
 ):
     try:
         return expected_type(value)
@@ -148,7 +157,7 @@ def generic_obj_to_value(
             )
         return result
 
-    if isinstance(value, dict) and issubclass(expected_type, BaseModel):
+    if isinstance(value, dict) and is_base_model_type(expected_type=expected_type):
         if len(expected_type_args) > 1:
             raise ValueError(
                 "unsupported operation: at this time we cannot have"
@@ -249,7 +258,9 @@ class BaseModel:
                 )
 
             # Handle nested models
-            elif isinstance(value, dict) and issubclass(expected_type, BaseModel):
+            elif isinstance(value, dict) and is_base_model_type(
+                expected_type=expected_type
+            ):
                 value = expected_type(**value)
 
             elif isinstance(value, list):
