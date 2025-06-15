@@ -1,17 +1,11 @@
-# from typing import Any, Optional
-# from decimal import Decimal
-# from datetime import datetime, timedelta
-# import pytz
-
 from decimal import Decimal
 from typing import Any
 from trd_utils.types_helper import BaseModel
 
-# from trd_utils.common_utils.float_utils import (
-#     dec_to_str,
-#     dec_to_normalize,
-# )
 
+###########################################################
+
+# region common types
 
 
 class BlofinApiResponse(BaseModel):
@@ -26,18 +20,26 @@ class BlofinApiResponse(BaseModel):
         return f"code: {self.code}; timestamp: {self.timestamp}"
 
 
+# endregion
+
 ###########################################################
+
+# region api-config types
+
 
 class PnlShareListInfo(BaseModel):
     background_color: str = None
     background_img_up: str = None
     background_img_down: str = None
 
+
 class ShareConfigResult(BaseModel):
     pnl_share_list: list[PnlShareListInfo] = None
 
+
 class ShareConfigResponse(BlofinApiResponse):
     data: ShareConfigResult = None
+
 
 class CmsColorResult(BaseModel):
     color: str = None
@@ -45,10 +47,16 @@ class CmsColorResult(BaseModel):
     country: str = None
     ip: str = None
 
+
 class CmsColorResponse(BlofinApiResponse):
     data: CmsColorResult = None
 
+
+# endregion
+
 ###########################################################
+
+# region copy-trader types
 
 
 class CopyTraderInfoResult(BaseModel):
@@ -79,8 +87,10 @@ class CopyTraderInfoResult(BaseModel):
     def get_profile_url(self) -> str:
         return f"https://blofin.com/copy-trade/details/{self.uid}"
 
+
 class CopyTraderInfoResponse(BlofinApiResponse):
     data: CopyTraderInfoResult = None
+
 
 class CopyTraderSingleOrderInfo(BaseModel):
     id: int = None
@@ -136,14 +146,23 @@ class CopyTraderSingleOrderInfo(BaseModel):
     position_change_history: Any = None
     user_id: Any = None
 
+
 class CopyTraderOrderListResponse(BlofinApiResponse):
     data: list[CopyTraderSingleOrderInfo] = None
+
 
 class CopyTraderAllOrderList(CopyTraderOrderListResponse):
     total_count: int = None
 
+
 class CopyTraderOrderHistoryResponse(BlofinApiResponse):
     data: list[CopyTraderSingleOrderInfo] = None
 
+
 class CopyTraderAllOrderHistory(CopyTraderOrderHistoryResponse):
     total_count: int = None
+
+
+# endregion
+
+###########################################################

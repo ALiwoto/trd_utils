@@ -1,4 +1,3 @@
-
 from .exchange_base import ExchangeBase
 from .base_types import (
     UnifiedTraderInfo,
@@ -8,6 +7,7 @@ from .base_types import (
 from .blofin import BlofinClient
 from .bx_ultra import BXUltraClient
 from .hyperliquid import HyperLiquidClient
+from .okx import OkxClient
 
 
 __all__ = [
@@ -18,4 +18,5 @@ __all__ = [
     "BXUltraClient",
     "BlofinClient",
     "HyperLiquidClient",
+    "OkxClient",
 ]

@@ -1,6 +1,6 @@
 from decimal import Decimal
 import json
-from typing import Any, Type
+from typing import Type
 from abc import ABC
 
 import httpx
@@ -72,6 +72,7 @@ class ExchangeBase(ABC):
         params: dict | None = None,
         model_type: Type[BaseModel] | None = None,
         parse_float=Decimal,
+        raw_data: bool = False,
     ) -> "BaseModel":
         """
         Invokes the specific request to the specific url with the specific params and headers.
@@ -81,6 +82,12 @@ class ExchangeBase(ABC):
             headers=headers,
             params=params,
         )
+        if raw_data:
+            return response.content
+
+        if not model_type:
+            return response.json()
+
         return model_type.deserialize(response.json(parse_float=parse_float))
 
     async def invoke_post(
@@ -91,6 +98,7 @@ class ExchangeBase(ABC):
         content: dict | str | bytes = "",
         model_type: Type[BaseModel] | None = None,
         parse_float=Decimal,
+        raw_data: bool = False,
     ) -> "BaseModel":
         """
         Invokes the specific request to the specific url with the specific params and headers.
@@ -105,6 +113,9 @@ class ExchangeBase(ABC):
             params=params,
             content=content,
         )
+        if raw_data:
+            return response.content
+
         if not model_type:
             return response.json()
 

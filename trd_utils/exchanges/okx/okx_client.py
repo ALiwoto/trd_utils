@@ -1,28 +1,36 @@
-
-from decimal import Decimal
 import json
 import logging
+import time
 import httpx
 
 from pathlib import Path
 
 from trd_utils.cipher import AESCipher
-from trd_utils.common_utils.wallet_utils import shorten_wallet_address
-from trd_utils.exchanges.base_types import UnifiedPositionInfo, UnifiedTraderInfo, UnifiedTraderPositions
+from trd_utils.exchanges.base_types import (
+    UnifiedPositionInfo,
+    UnifiedTraderInfo,
+    UnifiedTraderPositions,
+)
 from trd_utils.exchanges.exchange_base import ExchangeBase
-from trd_utils.exchanges.hyperliquid.hyperliquid_types import TraderPositionsInfoResponse
+from trd_utils.exchanges.okx.okx_types import (
+    AppContextUserInfo,
+    CurrentUserPositionsResponse,
+    UserInfoHtmlParser,
+    UserInfoInitialProps,
+)
 
 logger = logging.getLogger(__name__)
 
-BASE_PROFILE_URL = "https://hypurrscan.io/address/"
+BASE_PROFILE_URL = "https://www.okx.com/copy-trading/account/"
 
 
-class HyperLiquidClient(ExchangeBase):
+class OkxClient(ExchangeBase):
     ###########################################################
     # region client parameters
-    hyperliquid_api_base_host: str = "https://api.hyperliquid.xyz"
-    hyperliquid_api_base_url: str = "https://api.hyperliquid.xyz"
-    origin_header: str = "app.hyperliquid.xy"
+    okx_api_base_host: str = "https://www.okx.com"
+    okx_api_base_url: str = "https://www.okx.com"
+    okx_api_v5_url: str = "https://www.okx.com/priapi/v5"
+    origin_header: str = "https://www.okx.com"
 
     # endregion
     ###########################################################
@@ -48,41 +56,54 @@ class HyperLiquidClient(ExchangeBase):
         self.sessions_dir = sessions_dir
 
         if read_session_file:
-            self.read_from_session_file(f"{sessions_dir}/{self.account_name}.hl")
+            self.read_from_session_file(f"{sessions_dir}/{self.account_name}.okx")
 
     # endregion
     ###########################################################
-    # region info endpoints
-    async def get_trader_positions_info(
+    # region positions endpoints
+    async def get_trader_positions(
         self,
         uid: int | str,
-    ) -> TraderPositionsInfoResponse:
-        payload = {
-            "type": "clearinghouseState",
-            "user": f"{uid}",
+    ) -> CurrentUserPositionsResponse:
+        params = {
+            "uniqueName": f"{uid}",
+            "t": f"{int(time.time() * 1000)}",
         }
         headers = self.get_headers()
-        return await self.invoke_post(
-            f"{self.hyperliquid_api_base_host}/info",
+        return await self.invoke_get(
+            f"{self.okx_api_v5_url}/ecotrade/public/community/user/position-current",
             headers=headers,
-            content=payload,
-            model_type=TraderPositionsInfoResponse,
+            params=params,
+            model_type=CurrentUserPositionsResponse,
         )
 
-    #endregion
+    # endregion
     ###########################################################
     # region another-thing
-    # async def get_another_thing_info(self, uid: int) -> AnotherThingInfoResponse:
-    #     payload = {
-    #         "uid": uid,
-    #     }
-    #     headers = self.get_headers()
-    #     return await self.invoke_post(
-    #         f"{self.hyperliquid_api_base_url}/another-thing/info",
-    #         headers=headers,
-    #         content=payload,
-    #         model_type=CopyTraderInfoResponse,
-    #     )
+
+    async def get_copy_trader_info(
+        self,
+        uid: int | str,
+    ) -> UserInfoInitialProps:
+        params = {
+            "tab": "trade",
+        }
+        headers = self.get_headers()
+        result: bytes = await self.invoke_get(
+            f"{self.okx_api_base_host}/copy-trading/account/{uid}",
+            headers=headers,
+            params=params,
+            model_type=AppContextUserInfo,
+            raw_data=True,
+        )
+        parser = UserInfoHtmlParser("__app_data_for_ssr__")
+        parser.feed(result.decode("utf-8"))
+        if not parser.found_value:
+            raise ValueError("Okx API returned invalid response")
+
+        return AppContextUserInfo(
+            **(json.loads(parser.found_value)["appContext"]),
+        ).initial_props
 
     # endregion
     ###########################################################
@@ -146,23 +167,22 @@ class HyperLiquidClient(ExchangeBase):
         self,
         uid: int | str,
     ) -> UnifiedTraderPositions:
-        result = await self.get_trader_positions_info(
+        result = await self.get_trader_positions(
             uid=uid,
         )
         unified_result = UnifiedTraderPositions()
         unified_result.positions = []
-        for position_container in result.asset_positions:
-            position = position_container.position
+        for position in result.data[0].pos_data:
             unified_pos = UnifiedPositionInfo()
-            unified_pos.position_id = position.get_position_id()
-            unified_pos.position_pnl = round(position.unrealized_pnl, 3)
+            unified_pos.position_id = position.pos_id
+            unified_pos.position_pnl = round(position.realized_pnl, 3)
             unified_pos.position_side = position.get_side()
-            unified_pos.margin_mode = position.leverage.type
-            unified_pos.position_leverage = Decimal(position.leverage.value)
-            unified_pos.position_pair = f"{position.coin}/USDT"
-            unified_pos.open_time = None # hyperliquid doesn't provide this...
-            unified_pos.open_price = position.entry_px
-            unified_pos.open_price_unit = "USDT"
+            unified_pos.margin_mode = position.mgn_mode
+            unified_pos.position_leverage = position.lever
+            unified_pos.position_pair = position.get_pair()
+            unified_pos.open_time = position.c_time
+            unified_pos.open_price = position.avg_px
+            unified_pos.open_price_unit = position.quote_ccy
             unified_result.positions.append(unified_pos)
 
         return unified_result
@@ -171,16 +191,17 @@ class HyperLiquidClient(ExchangeBase):
         self,
         uid: int | str,
     ) -> UnifiedTraderInfo:
-        if not isinstance(uid, str):
-            uid = str(uid)
-        # sadly hyperliquid doesn't really have an endpoint to fetch information
-        # so we have to somehow *fake* these...
-        # maybe in future try to find a better way?
+        result = await self.get_copy_trader_info(
+            uid=uid,
+        )
+        account_info = result.pre_process.leader_account_info
+        overview = result.overview_data
+
         unified_info = UnifiedTraderInfo()
-        unified_info.trader_id = uid
-        unified_info.trader_name = shorten_wallet_address(uid)
+        unified_info.trader_id = account_info.unique_name or uid
+        unified_info.trader_name = account_info.en_nick_name or account_info.nick_name
         unified_info.trader_url = f"{BASE_PROFILE_URL}{uid}"
-        unified_info.win_rate = None
+        unified_info.win_rate = overview.win_rate
 
         return unified_info
 
