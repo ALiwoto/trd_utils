@@ -98,6 +98,21 @@ def value_to_normal_obj(value, omit_none: bool = False):
 
     raise TypeError(f"unsupported type provided: {type(value)}")
 
+def convert_to_expected_type(
+    expected_type: type,
+    value: Any,
+    default_value = None,
+):
+    try:
+        return expected_type(value)
+    except Exception:
+        if value == "":
+            try:
+                return expected_type()
+            except Exception:
+                return default_value
+        return default_value
+
 
 def generic_obj_to_value(
     expected_type: type,
@@ -144,7 +159,10 @@ def generic_obj_to_value(
     if not expected_type_args:
         if value is None or isinstance(value, expected_type):
             return value
-        return expected_type(value)
+        return convert_to_expected_type(
+            expected_type=expected_type,
+            value=value,
+        )
 
     raise TypeError(f"unsupported type: {type(value)}")
 
@@ -266,7 +284,10 @@ class BaseModel:
             # Type checking
             elif not (is_any_type(expected_type) or isinstance(value, expected_type)):
                 try:
-                    value = expected_type(value)
+                    value = convert_to_expected_type(
+                        expected_type=expected_type,
+                        value=value,
+                    )
                 except Exception:
                     raise TypeError(
                         f"Field {corrected_key} must be of type {expected_type},"
