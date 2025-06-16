@@ -131,6 +131,7 @@ class ExchangeBase(ABC):
 
         j_obj = self._resp_to_json(
             response=response,
+            parse_float=parse_float,
         )
         if not model_type:
             return j_obj
