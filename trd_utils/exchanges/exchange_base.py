@@ -82,13 +82,12 @@ class ExchangeBase(ABC):
             headers=headers,
             params=params,
         )
-        if raw_data:
-            return response.content
-
-        if not model_type:
-            return response.json()
-
-        return model_type.deserialize(response.json(parse_float=parse_float))
+        return self._handle_response(
+            response=response,
+            model_type=model_type,
+            parse_float=parse_float,
+            raw_data=raw_data,
+        )
 
     async def invoke_post(
         self,
@@ -113,14 +112,61 @@ class ExchangeBase(ABC):
             params=params,
             content=content,
         )
+        return self._handle_response(
+            response=response,
+            model_type=model_type,
+            parse_float=parse_float,
+            raw_data=raw_data,
+        )
+
+    def _handle_response(
+        self,
+        response: httpx.Response,
+        model_type: Type[BaseModel] | None = None,
+        parse_float=Decimal,
+        raw_data: bool = False,
+    ) -> "BaseModel":
         if raw_data:
             return response.content
 
+        j_obj = self._resp_to_json(
+            response=response,
+        )
         if not model_type:
-            return response.json()
+            return j_obj
 
-        return model_type.deserialize(response.json(parse_float=parse_float))
+        return model_type.deserialize(j_obj)
 
+    def _resp_to_json(
+        self,
+        response: httpx.Response,
+        parse_float=None,
+    ):
+        try:
+            return response.json(parse_float=parse_float)
+        except UnicodeDecodeError:
+            # try to decompress manually
+            import gzip
+            import brotli
+
+            content_encoding = response.headers.get("Content-Encoding", "").lower()
+            content = response.content
+
+            if "gzip" in content_encoding:
+                content = gzip.decompress(content)
+            elif "br" in content_encoding:
+                content = brotli.decompress(content)
+            elif "deflate" in content_encoding:
+                import zlib
+
+                content = zlib.decompress(content, -zlib.MAX_WBITS)
+            else:
+                raise ValueError(
+                    f"failed to detect content encoding: {content_encoding}"
+                )
+
+            # Now parse the decompressed content
+            return json.loads(content.decode("utf-8"), parse_float=parse_float)
 
     async def aclose(self) -> None:
         await self.httpx_client.aclose()

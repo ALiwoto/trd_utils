@@ -197,7 +197,8 @@ async def test_bx_get_copy_trader_resume1():
 async def test_bx_get_copy_trader_resume2():
     client = BXUltraClient()
 
-    USER_ID = 1998800000051839
+    # USER_ID = 1998800000051839
+    USER_ID = 1998800000029040
 
     result = await client.get_copy_trader_resume(
         uid=USER_ID,
