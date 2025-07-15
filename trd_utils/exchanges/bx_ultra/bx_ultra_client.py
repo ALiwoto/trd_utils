@@ -124,14 +124,12 @@ class BXUltraClient(ExchangeBase):
         self._fav_letter = fav_letter
         self.sessions_dir = sessions_dir
 
+        super().__init__()
         self.read_from_session_file(
             file_path=f"{self.sessions_dir}/{self.account_name}.bx"
         )
         self.__last_candle_storage = {}
         self.__last_candle_lock = asyncio.Lock()
-        self._internal_lock = asyncio.Lock()
-        self.extra_tasks = []
-        self.ws_connections = []
 
     # endregion
     ###########################################################
@@ -702,6 +700,7 @@ class BXUltraClient(ExchangeBase):
     async def get_trader_api_identity(
         self,
         uid: int | str,
+        sub_account_filter: str = "futures",
     ) -> int | str:
         global user_api_identity_cache
         api_identity = user_api_identity_cache.get(uid, None)
@@ -710,6 +709,12 @@ class BXUltraClient(ExchangeBase):
                 uid=uid,
             )
             api_identity = resume.data.api_identity
+            if not api_identity:
+                # second try: try to use one of the sub-accounts' identity
+                api_identity = resume.data.get_account_identity_by_filter(sub_account_filter)
+
+            # maybe also try to fetch it in other ways later?
+            # ...
             user_api_identity_cache[uid] = api_identity
         return api_identity
 
@@ -838,7 +843,8 @@ class BXUltraClient(ExchangeBase):
         aes = AESCipher(key=f"bx_{self.account_name}_bx", fav_letter=self._fav_letter)
         target_path = Path(file_path)
         if not target_path.exists():
-            target_path.mkdir(parents=True)
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            target_path.touch()
         target_path.write_text(aes.encrypt(json.dumps(json_data)))
 
     # endregion
@@ -848,10 +854,17 @@ class BXUltraClient(ExchangeBase):
     async def get_unified_trader_positions(
         self,
         uid: int | str,
+        api_identity: int | str | None = None,
+        sub_account_filter: str = "futures",
     ) -> UnifiedTraderPositions:
-        api_identity = await self.get_trader_api_identity(
-            uid=uid,
-        )
+        if not api_identity:
+            api_identity = await self.get_trader_api_identity(
+                uid=uid,
+                sub_account_filter=sub_account_filter,
+            )
+        
+        if not api_identity:
+            raise ValueError(f"Failed to fetch api_identity for user {uid}")
 
         result = await self.get_copy_trader_positions(
             uid=uid,

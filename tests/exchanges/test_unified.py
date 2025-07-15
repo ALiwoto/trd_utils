@@ -25,6 +25,8 @@ unified_test1_targets = {
     ],
     "bx": [
         # 1023995029120749569, hidden positions
+        # 1998800000051548, has identity
+        # 1998800000051839,
         1414050434086264836,
     ]
 }

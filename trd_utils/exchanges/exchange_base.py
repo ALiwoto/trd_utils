@@ -66,7 +66,15 @@ class ExchangeBase(ABC):
     ws_connections: list[WSConnection] = None
     # endregion
     ###########################################################
+    # region constructor method
 
+    def __init__(self):
+        self._internal_lock = asyncio.Lock()
+        self.extra_tasks = []
+        self.ws_connections = []
+
+    # endregion
+    ###########################################################
     # region abstract trading methods
 
     async def get_unified_trader_positions(
@@ -96,7 +104,6 @@ class ExchangeBase(ABC):
         )
 
     # endregion
-
     ###########################################################
     # region client helper methods
     def get_headers(self, payload=None, needs_auth: bool = False) -> dict:

@@ -636,6 +636,17 @@ class CopyTraderResumeResult(BaseModel):
     swap_copy_trade_label_type: int = None
     is_pro: int = None
 
+    def get_account_identity_by_filter(self, filter_text: str):
+        if not self.trader_sharing_accounts:
+            return 0
+        
+        for current in self.trader_sharing_accounts:
+            if current.display_name.lower().find(filter_text) != -1 or \
+                current.copy_trade_account_enum.lower().find(filter_text) != -1:
+                if current.api_identity:
+                    return current.api_identity
+        return 0
+
 
 class CopyTraderResumeResponse(BxApiResponse):
     data: CopyTraderResumeResult = None

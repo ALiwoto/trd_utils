@@ -47,6 +47,8 @@ class HyperLiquidClient(ExchangeBase):
         self._fav_letter = fav_letter
         self.sessions_dir = sessions_dir
 
+        super().__init__()
+
         if read_session_file:
             self.read_from_session_file(f"{sessions_dir}/{self.account_name}.hl")
 
