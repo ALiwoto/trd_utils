@@ -50,6 +50,7 @@ from trd_utils.exchanges.bx_ultra.bx_types import (
 )
 from trd_utils.cipher import AESCipher
 
+from trd_utils.exchanges.errors import ExchangeError
 from trd_utils.exchanges.exchange_base import ExchangeBase, JWTManager
 
 PLATFORM_ID_ANDROID = "10"
@@ -857,6 +858,13 @@ class BXUltraClient(ExchangeBase):
             api_identity=api_identity,
             page_size=50,  # TODO: make this dynamic I guess...
         )
+        if not result.data:
+            if result.msg:
+                raise ExchangeError(result.msg)
+            raise ExchangeError(
+                f"Unknown error happened while fetching positions of {uid}, "
+                f"code: {result.code}"
+            )
         if result.data.hide == 0 and not result.data.positions:
             # TODO: do proper exceptions here...
             raise ValueError("The trader has made their positions hidden")
