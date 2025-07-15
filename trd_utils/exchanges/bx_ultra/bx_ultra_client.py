@@ -3,15 +3,23 @@ BxUltra exchange subclass
 """
 
 import asyncio
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import json
 import logging
+import gzip
+from urllib.parse import urlencode
 import uuid
 
 import httpx
 
 import time
 from pathlib import Path
+
+import websockets
+import websockets.asyncio
+import websockets.asyncio.client
+import websockets.asyncio.connection
 
 from trd_utils.exchanges.base_types import (
     UnifiedPositionInfo,
@@ -21,17 +29,20 @@ from trd_utils.exchanges.base_types import (
 from trd_utils.exchanges.bx_ultra.bx_utils import do_ultra_ss
 from trd_utils.exchanges.bx_ultra.bx_types import (
     AssetsInfoResponse,
+    ContractConfigResponse,
     ContractOrdersHistoryResponse,
     ContractsListResponse,
     CopyTraderFuturesStatsResponse,
     CopyTraderResumeResponse,
     CopyTraderTradePositionsResponse,
+    CreateOrderDelegationResponse,
     HintListResponse,
     HomePageResponse,
     HotSearchResponse,
     QuotationRankResponse,
     SearchCopyTraderCondition,
     SearchCopyTradersResponse,
+    SingleCandleInfo,
     UserFavoriteQuotationResponse,
     ZenDeskABStatusResponse,
     ZenDeskAuthResponse,
@@ -39,7 +50,7 @@ from trd_utils.exchanges.bx_ultra.bx_types import (
 )
 from trd_utils.cipher import AESCipher
 
-from trd_utils.exchanges.exchange_base import ExchangeBase
+from trd_utils.exchanges.exchange_base import ExchangeBase, JWTManager
 
 PLATFORM_ID_ANDROID = "10"
 PLATFORM_ID_WEB = "30"
@@ -71,6 +82,7 @@ class BXUltraClient(ExchangeBase):
     # region client parameters
     we_api_base_host: str = "\u0061pi-\u0061pp.w\u0065-\u0061pi.com"
     we_api_base_url: str = "https://\u0061pi-\u0061pp.w\u0065-\u0061pi.com/\u0061pi"
+    ws_we_api_base_url: str = "wss://ws-market-swap.w\u0065-\u0061pi.com/ws"
     original_base_host: str = "https://\u0062ing\u0078.co\u006d"
     qq_os_base_host: str = "https://\u0061pi-\u0061pp.\u0071\u0071-os.com"
     qq_os_base_url: str = "https://\u0061pi-\u0061pp.\u0071\u0071-os.com/\u0061pi"
@@ -85,6 +97,9 @@ class BXUltraClient(ExchangeBase):
     platform_lang: str = "en"
     sys_lang: str = "en"
 
+    # a dict that maps "BTC/USDT" to it single candle info.
+    __last_candle_storage: dict = None
+    __last_candle_lock: asyncio.Lock = None
     # endregion
     ###########################################################
     # region client constructor
@@ -106,8 +121,16 @@ class BXUltraClient(ExchangeBase):
         self.device_brand = device_brand
         self.app_version = app_version
         self._fav_letter = fav_letter
+        self.sessions_dir = sessions_dir
 
-        self.read_from_session_file(f"{sessions_dir}/{self.account_name}.bx")
+        self.read_from_session_file(
+            file_path=f"{self.sessions_dir}/{self.account_name}.bx"
+        )
+        self.__last_candle_storage = {}
+        self.__last_candle_lock = asyncio.Lock()
+        self._internal_lock = asyncio.Lock()
+        self.extra_tasks = []
+        self.ws_connections = []
 
     # endregion
     ###########################################################
@@ -222,6 +245,15 @@ class BXUltraClient(ExchangeBase):
             model_type=ZenDeskAuthResponse,
         )
 
+    async def re_authorize_user(self) -> bool:
+        result = await self.do_zendesk_auth()
+        if not result.data.jwt:
+            return False
+
+        self.authorization_token = result.data.jwt
+        self._save_session_file(file_path=f"{self.sessions_dir}/{self.account_name}.bx")
+        return True
+
     # endregion
     ###########################################################
     # region platform-tool
@@ -246,7 +278,118 @@ class BXUltraClient(ExchangeBase):
 
     # endregion
     ###########################################################
+    # region ws-subscribes
+    async def do_price_subscribe(self) -> None:
+        """
+        Subscribes to the price changes coming from the exchange.
+        NOTE: This method DOES NOT return. you should do create_task
+            for it.
+        """
+        params = {
+            "platformid": self.platform_id,
+            "app_version": self.app_version,
+            "x-router-tag": self.x_router_tag,
+            "lang": self.platform_lang,
+            "device_id": self.device_id,
+            "channel": self.channel_header,
+            "device_brand": self.device_brand,
+            "traceId": self.trace_id,
+        }
+        url = f"{self.ws_we_api_base_url}?{urlencode(params, doseq=True)}"
+        async with websockets.connect(url, ping_interval=None) as ws:
+            await self._internal_lock.acquire()
+            self.ws_connections.append(ws)
+            self._internal_lock.release()
+
+            await ws.send(json.dumps({
+                "dataType": "swap.market.v2.contracts",
+                "id": uuid.uuid4().hex,
+                "reqType": "sub",
+            }))
+            async for msg in ws:
+                try:
+                    decompressed_message = gzip.decompress(msg)
+                    if decompressed_message.lower() == "ping":
+                        await ws.send("Pong")
+                        continue
+
+                    data: dict = json.loads(decompressed_message, parse_float=Decimal)
+                    if not isinstance(data, dict):
+                        logger.warning(f"invalid data instance: {type(data)}")
+                        continue
+
+                    if data.get("code", 0) == 0 and data.get("data", None) is None:
+                        # it's all fine
+                        continue
+
+                    if data.get("ping", None):
+                        target_id = data["ping"]
+                        target_time = data.get(
+                            "time",
+                            datetime.now(
+                                timezone(timedelta(hours=8))
+                            ).isoformat(timespec="seconds")
+                        )
+                        await ws.send(json.dumps({
+                            "pong": target_id,
+                            "time": target_time,
+                        }))
+                        continue
+
+                    inner_data = data.get("data", None)
+                    if isinstance(inner_data, dict):
+                        if data.get("dataType", None) == "swap.market.v2.contracts":
+                            list_data = inner_data.get("l", None)
+                            await self.__last_candle_lock.acquire()
+                            for current in list_data:
+                                info = SingleCandleInfo.deserialize_short(current)
+                                if info:
+                                    self.__last_candle_storage[info.pair.lower()] = info
+                            self.__last_candle_lock.release()
+                        continue
+
+                    logger.info(f"we got some unknown data: {data}")
+                except Exception as ex:
+                    logger.info(f"failed to handle ws message from exchange: {msg}; {ex}")
+    
+    async def get_last_candle(self, pair: str) -> SingleCandleInfo:
+        """
+        Returns the last candle's info in this exchange.
+        This method is safe to be called ONLY from the exact same thread
+        that the loop is currently operating on.
+        """
+        await self.__last_candle_lock.acquire()
+        info = self.__last_candle_storage.get(pair.lower())
+        self.__last_candle_lock.release()
+        return info
+    
+    # endregion
+    ###########################################################
     # region contract
+    async def get_contract_config(
+        self,
+        fund_type: int, # e.g. 1
+        coin_name: str, # e.g. "SOL"
+        valuation_name: str, # e.g. "USDT"
+        margin_coin_name: str, # e.g. "USDT"
+    ) -> ContractConfigResponse:
+        params = {
+            "fundType": f"{fund_type}",
+            "coinName": f"{coin_name}",
+            "valuationName": f"{valuation_name}",
+            "marginCoinName": f"{margin_coin_name}",
+        }
+        headers = self.get_headers(
+            payload=params,
+        )
+        return await self.invoke_get(
+            # "https://bingx.com/api/v2/contract/config",
+            f"{self.qq_os_base_url}/v2/contract/config",
+            headers=headers,
+            params=params,
+            model_type=CopyTraderTradePositionsResponse,
+        )
+        
     async def get_contract_list(
         self,
         quotation_coin_id: int = -1,
@@ -403,6 +546,60 @@ class BXUltraClient(ExchangeBase):
 
     # endregion
     ###########################################################
+    # region contract delegation
+    async def create_order_delegation(
+        self,
+        balance_direction: int,  # e.g. 1
+        delegate_price: Decimal,  # e.g. 107414.70
+        fund_type: int,  # # e.g. 1
+        large_spread_rate: int,  # e.g. 0
+        lever_times: int,  # e.g. 5
+        margin: int,  # e.g. 5
+        margin_coin_name: str,  # e.g. "USDT"
+        market_factor: int,  # e.g. 1
+        order_type: int,  # e.g. 0
+        price: Decimal,  # the current price of the market??
+        stop_loss_rate: int,  # e.g. -1
+        stop_profit_rate: int,  # e.g. -1
+        quotation_coin_id: int,  # e.g. 1
+        spread_rate: float,  # something very low. e.g. 0.00003481
+        stop_loss_price: float,  # e.g. -1
+        stop_profit_price: float,  # e.g. -1
+        up_ratio: Decimal,  # e.g. 0.5
+    ) -> CreateOrderDelegationResponse:
+        payload = {
+            "balanceDirection": balance_direction,
+            "delegatePrice": f"{delegate_price}",
+            "fundType": fund_type,
+            "largeSpreadRate": large_spread_rate or 0,
+            "leverTimes": lever_times or 1,
+            "margin": margin,
+            "marginCoinName": margin_coin_name or "USDT",
+            "marketFactor": market_factor or 1,
+            "orderType": f"{order_type or 0}",
+            "price": float(price), # e.g. 107161.27
+            "profitLossRateDto": {
+                "stopProfitRate": stop_profit_rate or -1,
+                "stopLossRate": stop_loss_rate or -1,
+            },
+            "quotationCoinId": quotation_coin_id or 1,
+            "spreadRate": float(spread_rate) or 0.00003481,
+            "stopLossPrice": stop_loss_price or -1,
+            "stopProfitPrice": stop_profit_price or -1,
+            "upRatio": f"{0.5 if up_ratio is None else up_ratio}",
+        }
+        headers = self.get_headers(
+            needs_auth=True,
+            payload=payload,
+        )
+        return await self.invoke_post(
+            f"{self.we_api_base_url}/v2/contract/order/delegation",
+            headers=headers,
+            content=payload,
+            model_type=CreateOrderDelegationResponse,
+        )
+    # endregion
+    ###########################################################
     # region copy-trade-facade
     async def get_copy_trader_positions(
         self,
@@ -505,6 +702,7 @@ class BXUltraClient(ExchangeBase):
         self,
         uid: int | str,
     ) -> int | str:
+        global user_api_identity_cache
         api_identity = user_api_identity_cache.get(uid, None)
         if not api_identity:
             resume = await self.get_copy_trader_resume(
@@ -595,6 +793,8 @@ class BXUltraClient(ExchangeBase):
         self.authorization_token = json_data.get(
             "authorization_token", self.authorization_token
         )
+        if self.authorization_token:
+            self.jwt_manager = JWTManager(self.jwt_manager)
         self.app_id = json_data.get("app_id", self.app_id)
         self.trade_env = json_data.get("trade_env", self.trade_env)
         self.timezone = json_data.get("timezone", self.timezone)
@@ -608,6 +808,9 @@ class BXUltraClient(ExchangeBase):
         """
         Saves current information to the session file.
         """
+        if file_path is None:
+            file_path = f"{self.sessions_dir}/{self.account_name}.bx"
+
         if not self.device_id:
             self.device_id = uuid.uuid4().hex.replace("-", "") + "##"
 
@@ -645,8 +848,6 @@ class BXUltraClient(ExchangeBase):
         self,
         uid: int | str,
     ) -> UnifiedTraderPositions:
-        global user_api_identity_cache
-
         api_identity = await self.get_trader_api_identity(
             uid=uid,
         )
@@ -674,6 +875,12 @@ class BXUltraClient(ExchangeBase):
             unified_pos.open_price_unit = (
                 position.valuation_coin_name or position.symbol.split("-")[-1]
             )  # TODO
+
+            last_candle = await self.get_last_candle(unified_pos.position_pair)
+            if last_candle:
+                unified_pos.last_price = last_candle.close_price
+                unified_pos.last_volume = last_candle.quote_volume
+
             unified_result.positions.append(unified_pos)
 
         return unified_result

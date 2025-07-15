@@ -1,13 +1,38 @@
+import asyncio
 from decimal import Decimal
 import json
+import logging
 from typing import Type
 from abc import ABC
 
+import base64
+import time
+
 import httpx
+from websockets.asyncio.connection import Connection as WSConnection
 
 from trd_utils.exchanges.base_types import UnifiedTraderInfo, UnifiedTraderPositions
 from trd_utils.types_helper.base_model import BaseModel
 
+logger = logging.getLogger(__name__)
+
+class JWTManager():
+    _jwt_string: str = None
+
+    def __init__(self, jwt_string: str):
+        self._jwt_string = jwt_string
+        try:
+            payload_b64 = self._jwt_string.split('.')[1]
+            payload_bytes = base64.urlsafe_b64decode(payload_b64 + '==')
+            self.payload = json.loads(payload_bytes)
+        except Exception:
+            self.payload = {}
+
+    def is_expired(self):
+        if "exp" not in self.payload:
+            return False
+        
+        return time.time() > self.payload["exp"]
 
 class ExchangeBase(ABC):
     ###########################################################
@@ -22,11 +47,23 @@ class ExchangeBase(ABC):
     device_id: str = None
     trace_id: str = None
     app_version: str = "4.28.3"
+    x_router_tag: str = "gray-develop"
     platform_id: str = "10"
     install_channel: str = "officialAPK"
     channel_header: str = "officialAPK"
 
+    jwt_manager: JWTManager = None
+
     _fav_letter: str = "^"
+
+    # the lock for internal operations.
+    _internal_lock: asyncio.Lock = None
+
+    # extra tasks to be cancelled when the client closes.
+    extra_tasks: list[asyncio.Task] = None
+
+    # the ws connections to be closed when this client is closed.
+    ws_connections: list[WSConnection] = None
     # endregion
     ###########################################################
 
@@ -169,8 +206,31 @@ class ExchangeBase(ABC):
             # Now parse the decompressed content
             return json.loads(content.decode("utf-8"), parse_float=parse_float)
 
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type=None,
+        exc_value=None,
+        traceback=None,
+    ) -> None:
+        await self.aclose()
+
     async def aclose(self) -> None:
+        await self._internal_lock.acquire()
         await self.httpx_client.aclose()
+
+        if self.ws_connections:
+            for current in self.ws_connections:
+                try:
+                    await current.close()
+                except Exception as ex:
+                    logger.warning(f"failed to close ws connection: {ex}")
+                    continue
+            self.ws_connections = []
+
+        self._internal_lock.release()
 
     # endregion
     ###########################################################

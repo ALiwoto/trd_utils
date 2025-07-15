@@ -2,11 +2,79 @@ import pytest
 import asyncio
 
 from trd_utils.exchanges import BXUltraClient
-
 from trd_utils.types_helper import base_model
 
 # since we are testing, performance overhead of UltraList is not a concern
 base_model.ULTRA_LIST_ENABLED = True
+
+@pytest.mark.asyncio
+async def test_do_price_subscribe():
+    async with BXUltraClient() as client:
+        loop = asyncio.get_running_loop()
+        price_task = loop.create_task(client.do_price_subscribe())
+
+        successful_count = 0
+        failed_count = 0
+        while True:
+            await asyncio.sleep(7)
+            info = await client.get_last_candle("BTC/USDT")
+            if not info:
+                failed_count += 1
+                if failed_count >= 5:
+                    price_task.cancel()
+                    raise Exception("failed to fetch price from ws!")
+                continue
+
+            print(f"{info}")
+            successful_count += 1
+            if successful_count >= 5:
+                break
+        
+        price_task.cancel()
+
+@pytest.mark.asyncio
+async def test_create_order_delegation():
+    async with BXUltraClient() as client:
+        # set auth token here
+        print(bool(client.authorization_token))
+        #client._save_session_file(None)
+
+        # info = await client.get_assets_info()
+        # print(info)
+
+        data = await client.get_contract_config(
+            fund_type=1,
+            coin_name="SOL",
+            valuation_name="USDT",
+            margin_coin_name="USDT",
+        )
+        print(data)
+
+        result = await client.create_order_delegation(
+            balance_direction=1,
+            delegate_price="107414.70",
+        ) # not working :(
+        print(result)
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(True)
+async def test_re_authorize():
+    # The logic for this test is wrong sadly...please fix it later??
+    async with BXUltraClient() as client:
+        # set auth token here
+        print(bool(client.authorization_token))
+        is_expired = client.jwt_manager.is_expired()
+        print(f"is our jwt expired? {is_expired}")
+        if not is_expired:
+            # if our jwt is not expired, then don't re-authorize..
+            info = await client.get_assets_info()
+            print(info.data.account_overviews)
+            return
+
+        done = await client.re_authorize_user()
+        if not done:
+            raise ValueError("the re-authorization did not work...")
+
 
 @pytest.mark.asyncio
 async def test_bx_get_earning_amounts():

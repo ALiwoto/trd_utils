@@ -3,9 +3,11 @@ from decimal import Decimal
 from datetime import datetime, timedelta
 import pytz
 
+from trd_utils.exchanges.errors import ExchangeError
 from trd_utils.types_helper import BaseModel
 
 from trd_utils.common_utils.float_utils import (
+    as_decimal,
     dec_to_str,
     dec_to_normalize,
 )
@@ -86,6 +88,28 @@ class ExchangeVo(BaseModel):
 
     def __repr__(self):
         return f"{self.exchange_name} ({self.exchange_id}) - {self.account_enum}"
+
+
+class OrderLeverInfo(BaseModel):
+    lever_times: int = None
+    selected: bool = False
+
+    def __str__(self):
+        return f"{self.lever_times}x"
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class MarginDisplayInfo(BaseModel):
+    margin: Decimal = None
+    selected: bool = False
+
+
+class SysForceVoInfo(BaseModel):
+    begin_level: int = None
+    end_level: int = None
+    adjust_margin_rate: Decimal = None
 
 
 # endregion
@@ -387,11 +411,14 @@ class ZenDeskABStatusResult(BaseModel):
 class ZenDeskABStatusResponse(BxApiResponse):
     data: ZenDeskABStatusResult = None
 
+
 class ZenDeskAuthResult(BaseModel):
     jwt: str = None
 
+
 class ZenDeskAuthResponse(BxApiResponse):
     data: ZenDeskAuthResult = None
+
 
 # endregion
 
@@ -550,6 +577,7 @@ class CopyTraderInfo(BaseModel):
     short_uid: int = None
     identity_type: int = None
 
+
 class CopyTraderVo(BaseModel):
     audit_status: int = None
     trader_status: int = None
@@ -565,12 +593,14 @@ class CopyTraderVo(BaseModel):
     rank_account_id: int = None
     last_trader_time: datetime = None
 
+
 class CopyTraderAccountGradeVO(BaseModel):
     uid: int = None
     api_identity: int = None
     trader_grade: int = None
     label: int = None
     uid_and_api: str = None
+
 
 class CopyTraderSharingAccount(BaseModel):
     category: int = None
@@ -587,6 +617,7 @@ class CopyTraderSharingAccount(BaseModel):
     trader_account_grade_vo: Optional[CopyTraderAccountGradeVO] = None
     hide_info: int = None
     copy_trade_label_type: Optional[int] = None
+
 
 class CopyTraderResumeResult(BaseModel):
     trader_info: CopyTraderInfo = None
@@ -605,8 +636,10 @@ class CopyTraderResumeResult(BaseModel):
     swap_copy_trade_label_type: int = None
     is_pro: int = None
 
+
 class CopyTraderResumeResponse(BxApiResponse):
     data: CopyTraderResumeResult = None
+
 
 # endregion
 
@@ -780,6 +813,13 @@ class SearchCopyTradersResponse(BxApiResponse):
 ###########################################################
 
 # region Account Assets types
+
+
+class MinimalAssetInfo(BaseModel):
+    asset_id: int = None
+    asset_amount: Decimal = None
+    asset_name: str = None
+    has_value: bool = None
 
 
 class TotalAssetsInfo(BaseModel):
@@ -1042,6 +1082,9 @@ class ContractOrdersHistoryResponse(BxApiResponse):
         found_any_for_today: bool = False
         today_earnings = Decimal("0.00")
         today = datetime.now(timezone).date()
+        if not self.data and self.msg:
+            raise ExchangeError(self.msg)
+
         for current_order in self.data.orders:
             # check if the date is for today
             closed_date = (
@@ -1121,6 +1164,107 @@ class ContractOrdersHistoryResponse(BxApiResponse):
         if not self.data or not self.data.orders:
             return 0
         return len(self.data.orders)
+
+
+class ContractConfigData(BaseModel):
+    quotation_coin_id: int = None
+    max_lever: OrderLeverInfo = None
+    min_amount: Decimal = None
+    levers: list[OrderLeverInfo] = None
+    default_stop_loss_rate: Decimal = None
+    default_stop_profit_rate: Decimal = None
+    max_stop_loss_rate: Decimal = None
+    max_stop_profit_rate: Decimal = None
+    fee_rate: Decimal = None
+    interest_rate: Decimal = None
+    lever_fee_rate: Decimal = None
+    sys_force_rate: Decimal = None
+    new_sys_force_vo_list: list[SysForceVoInfo] = None
+    margin_displays: list[MarginDisplayInfo] = None
+    mlr: Decimal = None
+    lsf: Decimal = None
+    lsh: Decimal = None
+    hold_amount: Decimal = None
+    msr: Decimal = None
+    sfa: Decimal = None
+    available_asset: MinimalAssetInfo = None
+    coupon_asset_value: Any = None
+    contract_account_balance: MinimalAssetInfo = None
+    delegate_order_up_threshold_rate: Any = None
+    delegate_order_down_threshold_rate: Any = None
+    profit_loss_extra_vo: Any = None
+    fund_balance: Decimal = None
+    balance: Decimal = None
+    up_amount: Decimal = None
+    down_amount: Decimal = None
+    max_amount: Decimal = None
+    stop_offset_rate: Decimal = None
+
+
+class ContractConfigResponse(BxApiResponse):
+    data: ContractConfigData = None
+
+
+# endregion
+
+###########################################################
+
+# region contract delegation types
+
+
+class CreateOrderDelegationData(BaseModel):
+    order_id: str = None
+    spread_rate: str = None
+
+
+class CreateOrderDelegationResponse(BxApiResponse):
+    data: CreateOrderDelegationData = None
+
+
+# endregion
+
+###########################################################
+
+# region candle types
+
+
+class SingleCandleInfo(BaseModel):
+    # The pair in format of BTC/USDT.
+    pair: str = None
+
+    # This candle's open price.
+    open_price: Decimal = None
+
+    # The close price.
+    close_price: Decimal = None
+
+    # volume in the first pair (e.g. BTC).
+    volume: Decimal = None
+
+    # volume in the second part of the pair (e.g. USDT).
+    quote_volume: Decimal = None
+
+    @staticmethod
+    def deserialize_short(data: dict) -> "SingleCandleInfo":
+        info = SingleCandleInfo()
+        base: str = data.get("n", "")
+        quote: str = data.get("m", "")
+        info.pair = f"{base.upper()}/{quote.upper()}"
+        info.open_price = as_decimal(data.get("o", None))
+        info.close_price = as_decimal(data.get("c", None))
+        info.volume = data.get("v", None)
+        info.quote_volume = data.get("a", None)
+
+        return info
+
+    def __str__(self):
+        return (
+            f"{self.pair}, open: {self.open_price}, "
+            f"close: {self.close_price}, volume: {self.quote_volume}"
+        )
+    
+    def __repr__(self):
+        return super().__str__()
 
 
 # endregion
