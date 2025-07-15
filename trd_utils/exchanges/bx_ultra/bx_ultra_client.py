@@ -308,11 +308,12 @@ class BXUltraClient(ExchangeBase):
             async for msg in ws:
                 try:
                     decompressed_message = gzip.decompress(msg)
-                    if decompressed_message.lower() == "ping":
+                    str_msg = decompressed_message.decode("utf-8")
+                    if str_msg.lower() == "ping":
                         await ws.send("Pong")
                         continue
 
-                    data: dict = json.loads(decompressed_message, parse_float=Decimal)
+                    data: dict = json.loads(str_msg, parse_float=Decimal)
                     if not isinstance(data, dict):
                         logger.warning(f"invalid data instance: {type(data)}")
                         continue
