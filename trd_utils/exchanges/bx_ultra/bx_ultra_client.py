@@ -52,6 +52,7 @@ from trd_utils.cipher import AESCipher
 
 from trd_utils.exchanges.errors import ExchangeError
 from trd_utils.exchanges.exchange_base import ExchangeBase, JWTManager
+from trd_utils.exchanges.price_fetcher import IPriceFetcher
 
 PLATFORM_ID_ANDROID = "10"
 PLATFORM_ID_WEB = "30"
@@ -78,7 +79,7 @@ logger = logging.getLogger(__name__)
 user_api_identity_cache: dict[int, int] = {}
 
 
-class BXUltraClient(ExchangeBase):
+class BXUltraClient(ExchangeBase, IPriceFetcher):
     ###########################################################
     # region client parameters
     we_api_base_host: str = "\u0061pi-\u0061pp.w\u0065-\u0061pi.com"
@@ -295,9 +296,23 @@ class BXUltraClient(ExchangeBase):
             "traceId": self.trace_id,
         }
         url = f"{self.ws_we_api_base_url}?{urlencode(params, doseq=True)}"
+        while True:
+            try:
+                await self._do_price_ws(
+                    url=url,
+                )
+            except Exception as ex:
+                err_str = f"{ex}"
+                if err_str.find("Event loop is closed") != -1:
+                    # just return
+                    return
+
+                logger.warning(f"error at _do_price_ws: {err_str}")
+
+    async def _do_price_ws(self, url: str):
         async with websockets.connect(url, ping_interval=None) as ws:
             await self._internal_lock.acquire()
-            self.ws_connections.append(ws)
+            self.price_ws_connection = ws
             self._internal_lock.release()
 
             await ws.send(json.dumps({
@@ -309,48 +324,53 @@ class BXUltraClient(ExchangeBase):
                 try:
                     decompressed_message = gzip.decompress(msg)
                     str_msg = decompressed_message.decode("utf-8")
-                    if str_msg.lower() == "ping":
-                        await ws.send("Pong")
-                        continue
-
-                    data: dict = json.loads(str_msg, parse_float=Decimal)
-                    if not isinstance(data, dict):
-                        logger.warning(f"invalid data instance: {type(data)}")
-                        continue
-
-                    if data.get("code", 0) == 0 and data.get("data", None) is None:
-                        # it's all fine
-                        continue
-
-                    if data.get("ping", None):
-                        target_id = data["ping"]
-                        target_time = data.get(
-                            "time",
-                            datetime.now(
-                                timezone(timedelta(hours=8))
-                            ).isoformat(timespec="seconds")
-                        )
-                        await ws.send(json.dumps({
-                            "pong": target_id,
-                            "time": target_time,
-                        }))
-                        continue
-
-                    inner_data = data.get("data", None)
-                    if isinstance(inner_data, dict):
-                        if data.get("dataType", None) == "swap.market.v2.contracts":
-                            list_data = inner_data.get("l", None)
-                            await self.__last_candle_lock.acquire()
-                            for current in list_data:
-                                info = SingleCandleInfo.deserialize_short(current)
-                                if info:
-                                    self.__last_candle_storage[info.pair.lower()] = info
-                            self.__last_candle_lock.release()
-                        continue
-
-                    logger.info(f"we got some unknown data: {data}")
+                    await self._handle_price_ws_msg(
+                        str_msg=str_msg,
+                    )
                 except Exception as ex:
                     logger.info(f"failed to handle ws message from exchange: {msg}; {ex}")
+
+    async def _handle_price_ws_msg(self, str_msg: str):
+        if str_msg.lower() == "ping":
+            await self.price_ws_connection.send("Pong")
+            return
+
+        data: dict = json.loads(str_msg, parse_float=Decimal)
+        if not isinstance(data, dict):
+            logger.warning(f"invalid data instance: {type(data)}")
+            return
+
+        if data.get("code", 0) == 0 and data.get("data", None) is None:
+            # it's all fine
+            return
+
+        if data.get("ping", None):
+            target_id = data["ping"]
+            target_time = data.get(
+                "time",
+                datetime.now(
+                    timezone(timedelta(hours=8))
+                ).isoformat(timespec="seconds")
+            )
+            await self.price_ws_connection.send(json.dumps({
+                "pong": target_id,
+                "time": target_time,
+            }))
+            return
+
+        inner_data = data.get("data", None)
+        if isinstance(inner_data, dict):
+            if data.get("dataType", None) == "swap.market.v2.contracts":
+                list_data = inner_data.get("l", None)
+                await self.__last_candle_lock.acquire()
+                for current in list_data:
+                    info = SingleCandleInfo.deserialize_short(current)
+                    if info:
+                        self.__last_candle_storage[info.pair.lower()] = info
+                self.__last_candle_lock.release()
+            return
+
+        logger.info(f"we got some unknown data: {data}")
     
     async def get_last_candle(self, pair: str) -> SingleCandleInfo:
         """

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import pytz
 
 from trd_utils.exchanges.errors import ExchangeError
+from trd_utils.exchanges.price_fetcher import MinimalCandleInfo
 from trd_utils.types_helper import BaseModel
 
 from trd_utils.common_utils.float_utils import (
@@ -1239,22 +1240,7 @@ class CreateOrderDelegationResponse(BxApiResponse):
 # region candle types
 
 
-class SingleCandleInfo(BaseModel):
-    # The pair in format of BTC/USDT.
-    pair: str = None
-
-    # This candle's open price.
-    open_price: Decimal = None
-
-    # The close price.
-    close_price: Decimal = None
-
-    # volume in the first pair (e.g. BTC).
-    volume: Decimal = None
-
-    # volume in the second part of the pair (e.g. USDT).
-    quote_volume: Decimal = None
-
+class SingleCandleInfo(MinimalCandleInfo):
     @staticmethod
     def deserialize_short(data: dict) -> "SingleCandleInfo":
         info = SingleCandleInfo()

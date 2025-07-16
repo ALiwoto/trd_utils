@@ -62,8 +62,8 @@ class ExchangeBase(ABC):
     # extra tasks to be cancelled when the client closes.
     extra_tasks: list[asyncio.Task] = None
 
-    # the ws connections to be closed when this client is closed.
-    ws_connections: list[WSConnection] = None
+    # the price ws connection to be closed when this client is closed.
+    price_ws_connection: WSConnection = None
     # endregion
     ###########################################################
     # region constructor method
@@ -71,7 +71,6 @@ class ExchangeBase(ABC):
     def __init__(self):
         self._internal_lock = asyncio.Lock()
         self.extra_tasks = []
-        self.ws_connections = []
 
     # endregion
     ###########################################################
@@ -228,14 +227,11 @@ class ExchangeBase(ABC):
         await self._internal_lock.acquire()
         await self.httpx_client.aclose()
 
-        if self.ws_connections:
-            for current in self.ws_connections:
-                try:
-                    await current.close()
-                except Exception as ex:
-                    logger.warning(f"failed to close ws connection: {ex}")
-                    continue
-            self.ws_connections = []
+        if self.price_ws_connection:
+            try:
+                await self.price_ws_connection.close()
+            except Exception as ex:
+                logger.warning(f"failed to close ws connection: {ex}")
 
         self._internal_lock.release()
 
