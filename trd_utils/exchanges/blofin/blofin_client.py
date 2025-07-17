@@ -23,6 +23,7 @@ from trd_utils.exchanges.blofin.blofin_types import (
     ShareConfigResponse,
 )
 from trd_utils.cipher import AESCipher
+from trd_utils.exchanges.errors import ExchangeError
 from trd_utils.exchanges.exchange_base import ExchangeBase
 
 
@@ -141,6 +142,17 @@ class BlofinClient(ExchangeBase):
                 from_param=current_id_from,
                 limit_param=chunk_limit,
             )
+            if current_result.code != 200:
+                if current_result.msg:
+                    raise ExchangeError(
+                        f"blofin get_copy_trader_all_order_list: {current_result.msg}; "
+                        f"code: {current_result.code}"
+                    )
+                raise ExchangeError(
+                    "blofin get_copy_trader_all_order_list: unknown error; "
+                    f"code: {current_result.code}"
+                )
+
             if not isinstance(current_result, CopyTraderOrderListResponse):
                 raise ValueError(
                     "get_copy_trader_order_list returned invalid value of "
