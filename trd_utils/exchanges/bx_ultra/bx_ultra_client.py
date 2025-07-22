@@ -114,9 +114,13 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
         http_verify: bool = True,
         fav_letter: str = "^",
         sessions_dir: str = "sessions",
+        use_http1: bool = False,
+        use_http2: bool = True,
     ):
         self.httpx_client = httpx.AsyncClient(
-            verify=http_verify, http2=True, http1=False
+            verify=http_verify,
+            http1=use_http1,
+            http2=use_http2,
         )
         self.account_name = account_name
         self.platform_id = platform_id
@@ -124,6 +128,7 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
         self.app_version = app_version
         self._fav_letter = fav_letter
         self.sessions_dir = sessions_dir
+        self.exchange_name = "\u0062ing\u0078"
 
         super().__init__()
         self.read_from_session_file(
@@ -301,6 +306,8 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
                 await self._do_price_ws(
                     url=url,
                 )
+            except asyncio.CancelledError:
+                return
             except Exception as ex:
                 err_str = f"{ex}"
                 if err_str.find("Event loop is closed") != -1:
@@ -308,6 +315,7 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
                     return
 
                 logger.warning(f"error at _do_price_ws: {err_str}")
+                await asyncio.sleep(1)
 
     async def _do_price_ws(self, url: str):
         async with websockets.connect(url, ping_interval=None) as ws:

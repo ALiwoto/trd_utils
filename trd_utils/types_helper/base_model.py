@@ -212,7 +212,6 @@ def convert_to_ultra_list(value: Any) -> UltraList:
 class BaseModel:
     def __init__(self, **kwargs):
         annotations = get_my_field_types(self)
-        # annotations = self.__annotations__
         for key, value in kwargs.items():
             corrected_key = key
             if key not in annotations:

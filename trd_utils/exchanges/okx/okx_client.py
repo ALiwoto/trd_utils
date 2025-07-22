@@ -54,6 +54,7 @@ class OkxClient(ExchangeBase):
         self.account_name = account_name
         self._fav_letter = fav_letter
         self.sessions_dir = sessions_dir
+        self.exchange_name = "okx"
 
         super().__init__()
 

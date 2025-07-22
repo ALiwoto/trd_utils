@@ -52,6 +52,9 @@ class ExchangeBase(ABC):
     install_channel: str = "officialAPK"
     channel_header: str = "officialAPK"
 
+    # The name of the exchange.
+    exchange_name: str = None
+
     jwt_manager: JWTManager = None
 
     _fav_letter: str = "^"

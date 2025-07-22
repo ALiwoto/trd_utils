@@ -1,6 +1,9 @@
 
 
+from datetime import datetime
 from decimal import Decimal
+
+import pytz
 from trd_utils.types_helper import BaseModel
 
 
@@ -19,6 +22,13 @@ class MinimalCandleInfo(BaseModel):
 
     # volume in the second part of the pair (e.g. USDT).
     quote_volume: Decimal = None
+
+    # The time this candle info was retrieved.
+    fetched_at: datetime = None
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.fetched_at = datetime.now(tz=pytz.UTC)
 
 
 class IPriceFetcher:

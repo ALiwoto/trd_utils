@@ -51,16 +51,19 @@ class BlofinClient(ExchangeBase):
         fav_letter: str = "^",
         read_session_file: bool = True,
         sessions_dir: str = "sessions",
+        use_http1: bool = False,
+        use_http2: bool = True,
     ):
         self.httpx_client = httpx.AsyncClient(
             verify=http_verify,
-            http2=True,
-            http1=False,
+            http1=use_http1,
+            http2=use_http2,
         )
         self.account_name = account_name
         self._fav_letter = fav_letter
         self.sessions_dir = sessions_dir
-        
+        self.exchange_name = "blofin"
+
         super().__init__()
 
         if read_session_file:
