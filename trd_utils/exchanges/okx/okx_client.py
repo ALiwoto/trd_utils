@@ -186,6 +186,7 @@ class OkxClient(ExchangeBase):
             unified_pos.open_time = position.c_time
             unified_pos.open_price = position.avg_px
             unified_pos.open_price_unit = position.quote_ccy
+            unified_pos.initial_margin = position.margin
             unified_result.positions.append(unified_pos)
 
         return unified_result

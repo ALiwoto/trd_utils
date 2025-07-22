@@ -37,6 +37,11 @@ class UnifiedPositionInfo(BaseModel):
     # The base unit that the open-price is based on (e.g. USD, USDT, USDC)
     open_price_unit: str | None = None
 
+    # The initial amount of open_price_unit that the trader has put to open
+    # this position.
+    # Note that not all public APIs might provide this field.
+    initial_margin: Decimal | None = None
+
     # The last price of this pair on the target exchange.
     # not all exchanges support this yet, so use it with caution.
     last_price: Decimal | None = None

@@ -1,10 +1,13 @@
 
+from datetime import datetime
 from decimal import Decimal
 import json
 import logging
 import httpx
 
 from pathlib import Path
+
+import pytz
 
 from trd_utils.cipher import AESCipher
 from trd_utils.common_utils.wallet_utils import shorten_wallet_address
@@ -163,9 +166,10 @@ class HyperLiquidClient(ExchangeBase):
             unified_pos.margin_mode = position.leverage.type
             unified_pos.position_leverage = Decimal(position.leverage.value)
             unified_pos.position_pair = f"{position.coin}/USDT"
-            unified_pos.open_time = None # hyperliquid doesn't provide this...
+            unified_pos.open_time = datetime.now(pytz.UTC) # hyperliquid doesn't provide this...
             unified_pos.open_price = position.entry_px
             unified_pos.open_price_unit = "USDT"
+            unified_pos.initial_margin = position.margin_used
             unified_result.positions.append(unified_pos)
 
         return unified_result

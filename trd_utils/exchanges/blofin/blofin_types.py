@@ -97,8 +97,8 @@ class CopyTraderSingleOrderInfo(BaseModel):
     symbol: str = None
     leverage: int = None
     order_side: str = None
-    avg_open_price: str = None
-    quantity: str = None
+    avg_open_price: Decimal = None
+    quantity: Decimal = None
     quantity_cont: Any = None
     open_time: int = None
     close_time: Any = None
@@ -145,6 +145,11 @@ class CopyTraderSingleOrderInfo(BaseModel):
     broker_id: Any = None
     position_change_history: Any = None
     user_id: Any = None
+
+    def get_initial_margin(self) -> Decimal:
+        if not self.avg_open_price or not self.quantity or not self.leverage:
+            return None
+        return (self.avg_open_price * self.quantity) / self.leverage
 
 
 class CopyTraderOrderListResponse(BlofinApiResponse):

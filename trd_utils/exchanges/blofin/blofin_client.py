@@ -342,6 +342,7 @@ class BlofinClient(ExchangeBase):
             unified_pos.open_time = dt_from_ts(position.open_time)
             unified_pos.open_price = position.avg_open_price
             unified_pos.open_price_unit = position.symbol.split("-")[-1]
+            unified_pos.initial_margin = position.get_initial_margin()
             unified_result.positions.append(unified_pos)
 
         return unified_result

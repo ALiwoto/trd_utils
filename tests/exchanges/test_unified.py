@@ -16,7 +16,9 @@ from trd_utils.types_helper import base_model
 base_model.ULTRA_LIST_ENABLED = True
 
 unified_test1_targets = {
-    "okx": ["2B6BDA00968EA9F8"],
+    "okx": [
+        "2B6BDA00968EA9F8",
+    ],
     "hyperliquid": [
         "0xefd3ab65915e35105caa462442c9ecc1346728df",
     ],

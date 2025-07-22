@@ -922,6 +922,7 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
             unified_pos.position_pair = position.symbol.replace("-", "/")
             unified_pos.open_time = None  # TODO: do something for this?
             unified_pos.open_price = position.avg_price
+            unified_pos.initial_margin = position.margin
             unified_pos.open_price_unit = (
                 position.valuation_coin_name or position.symbol.split("-")[-1]
             )  # TODO
