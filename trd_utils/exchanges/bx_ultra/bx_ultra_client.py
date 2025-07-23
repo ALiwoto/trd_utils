@@ -922,6 +922,9 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
     ) -> UnifiedTraderPositions:
         perp_positions = []
         std_positions = []
+        perp_ex: str = None
+        std_ex: str = None
+
         try:
             result = await self.get_unified_trader_positions_perp(
                 uid=uid,
@@ -930,7 +933,7 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
             perp_positions = result.positions
         except Exception as ex:
             if not no_warn:
-                logger.warning(f"Failed to fetch perp positions of {uid}: {ex}")
+                perp_ex = f"{ex}"
 
         try:
             result = await self.get_unified_trader_positions_std(
@@ -939,7 +942,13 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
             std_positions = result.positions
         except Exception as ex:
             if not no_warn:
-                logger.warning(f"Failed to fetch std positions of {uid}: {ex}")
+                std_ex = f"{ex}"
+
+        if not perp_positions and not std_positions:
+            if perp_ex:
+                logger.warning(f"Failed to fetch perp positions of {uid}: {perp_ex}")
+            if std_ex:
+                logger.warning(f"Failed to fetch std positions of {uid}: {std_ex}")
 
         unified_result = UnifiedTraderPositions()
         unified_result.positions = perp_positions + std_positions
