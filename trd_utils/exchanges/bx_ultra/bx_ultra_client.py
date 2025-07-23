@@ -1054,7 +1054,7 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
 
                     unified_result.positions.append(unified_pos)
 
-                if result.data.total_str.find("+") == -1:
+                if not result.data.total_str or result.data.total_str.find("+") == -1:
                     # all is done
                     return unified_result
                 await asyncio.sleep(delay_amount)
