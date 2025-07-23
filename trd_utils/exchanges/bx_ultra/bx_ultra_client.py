@@ -1008,6 +1008,7 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
         uid: int | str,
         page_offset: int = 0,
         page_size: int = 50,
+        delay_amount: float = 1,
     ) -> UnifiedTraderPositions:
         unified_result = UnifiedTraderPositions()
         unified_result.positions = []
@@ -1053,9 +1054,10 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
 
                     unified_result.positions.append(unified_pos)
 
-                if int(result.data.total_str) <= len(unified_result.positions):
+                if result.data.total_str.find("+") == -1:
                     # all is done
                     return unified_result
+                await asyncio.sleep(delay_amount)
             except Exception as ex:
                 logger.warning(
                     f"Failed to fetch std positions from exchange for {uid}: {ex}"
