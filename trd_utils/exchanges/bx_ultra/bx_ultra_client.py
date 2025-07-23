@@ -16,10 +16,8 @@ import httpx
 import time
 from pathlib import Path
 
+import pytz
 import websockets
-import websockets.asyncio
-import websockets.asyncio.client
-import websockets.asyncio.connection
 
 from trd_utils.exchanges.base_types import (
     UnifiedPositionInfo,
@@ -34,6 +32,7 @@ from trd_utils.exchanges.bx_ultra.bx_types import (
     ContractsListResponse,
     CopyTraderFuturesStatsResponse,
     CopyTraderResumeResponse,
+    CopyTraderStdFuturesPositionsResponse,
     CopyTraderTradePositionsResponse,
     CreateOrderDelegationResponse,
     HintListResponse,
@@ -67,7 +66,7 @@ WEB_APP_VERSION = "4.78.12"
 TG_APP_VERSION = "5.0.15"
 
 ACCEPT_ENCODING_HEADER = "gzip, deflate, br, zstd"
-BASE_PROFILE_URL = "https://bingx.com/en/CopyTrading/"
+BASE_PROFILE_URL = "https://\u0062ing\u0078.co\u006d/en/CopyTr\u0061ding/"
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +101,7 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
     # a dict that maps "BTC/USDT" to it single candle info.
     __last_candle_storage: dict = None
     __last_candle_lock: asyncio.Lock = None
+
     # endregion
     ###########################################################
     # region client constructor
@@ -323,11 +323,15 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
             self.price_ws_connection = ws
             self._internal_lock.release()
 
-            await ws.send(json.dumps({
-                "dataType": "swap.market.v2.contracts",
-                "id": uuid.uuid4().hex,
-                "reqType": "sub",
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "dataType": "swap.market.v2.contracts",
+                        "id": uuid.uuid4().hex,
+                        "reqType": "sub",
+                    }
+                )
+            )
             async for msg in ws:
                 try:
                     decompressed_message = gzip.decompress(msg)
@@ -336,7 +340,9 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
                         str_msg=str_msg,
                     )
                 except Exception as ex:
-                    logger.info(f"failed to handle ws message from exchange: {msg}; {ex}")
+                    logger.info(
+                        f"failed to handle ws message from exchange: {msg}; {ex}"
+                    )
 
     async def _handle_price_ws_msg(self, str_msg: str):
         if str_msg.lower() == "ping":
@@ -356,14 +362,18 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
             target_id = data["ping"]
             target_time = data.get(
                 "time",
-                datetime.now(
-                    timezone(timedelta(hours=8))
-                ).isoformat(timespec="seconds")
+                datetime.now(timezone(timedelta(hours=8))).isoformat(
+                    timespec="seconds"
+                ),
             )
-            await self.price_ws_connection.send(json.dumps({
-                "pong": target_id,
-                "time": target_time,
-            }))
+            await self.price_ws_connection.send(
+                json.dumps(
+                    {
+                        "pong": target_id,
+                        "time": target_time,
+                    }
+                )
+            )
             return
 
         inner_data = data.get("data", None)
@@ -379,7 +389,7 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
             return
 
         logger.info(f"we got some unknown data: {data}")
-    
+
     async def get_last_candle(self, pair: str) -> SingleCandleInfo:
         """
         Returns the last candle's info in this exchange.
@@ -390,16 +400,16 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
         info = self.__last_candle_storage.get(pair.lower())
         self.__last_candle_lock.release()
         return info
-    
+
     # endregion
     ###########################################################
     # region contract
     async def get_contract_config(
         self,
-        fund_type: int, # e.g. 1
-        coin_name: str, # e.g. "SOL"
-        valuation_name: str, # e.g. "USDT"
-        margin_coin_name: str, # e.g. "USDT"
+        fund_type: int,  # e.g. 1
+        coin_name: str,  # e.g. "SOL"
+        valuation_name: str,  # e.g. "USDT"
+        margin_coin_name: str,  # e.g. "USDT"
     ) -> ContractConfigResponse:
         params = {
             "fundType": f"{fund_type}",
@@ -417,7 +427,7 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
             params=params,
             model_type=CopyTraderTradePositionsResponse,
         )
-        
+
     async def get_contract_list(
         self,
         quotation_coin_id: int = -1,
@@ -605,7 +615,7 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
             "marginCoinName": margin_coin_name or "USDT",
             "marketFactor": market_factor or 1,
             "orderType": f"{order_type or 0}",
-            "price": float(price), # e.g. 107161.27
+            "price": float(price),  # e.g. 107161.27
             "profitLossRateDto": {
                 "stopProfitRate": stop_profit_rate or -1,
                 "stopLossRate": stop_loss_rate or -1,
@@ -626,6 +636,7 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
             content=payload,
             model_type=CreateOrderDelegationResponse,
         )
+
     # endregion
     ###########################################################
     # region copy-trade-facade
@@ -650,6 +661,27 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
             headers=headers,
             params=params,
             model_type=CopyTraderTradePositionsResponse,
+        )
+
+    async def get_copy_trader_std_futures_positions(
+        self,
+        uid: int | str,
+        page_size: int = 20,
+        page_id: int = 0,
+    ) -> CopyTraderStdFuturesPositionsResponse:
+        params = {
+            "trader": f"{uid}",
+            # it seems like this method doesn't really need api identity param...
+            # "apiIdentity": f"{api_identity}",
+            "pageSize": f"{page_size}",
+            "pageId": f"{page_id}",
+        }
+        headers = self.get_headers(params)
+        return await self.invoke_get(
+            f"{self.we_api_base_url}/v1/copy-trade/traderContractHold",
+            headers=headers,
+            params=params,
+            model_type=CopyTraderStdFuturesPositionsResponse,
         )
 
     async def search_copy_traders(
@@ -740,7 +772,9 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
             api_identity = resume.data.api_identity
             if not api_identity:
                 # second try: try to use one of the sub-accounts' identity
-                api_identity = resume.data.get_account_identity_by_filter(sub_account_filter)
+                api_identity = resume.data.get_account_identity_by_filter(
+                    filter_text=sub_account_filter,
+                )
 
             # maybe also try to fetch it in other ways later?
             # ...
@@ -884,6 +918,37 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
         self,
         uid: int | str,
         api_identity: int | str | None = None,
+        no_warn: bool = False,
+    ) -> UnifiedTraderPositions:
+        perp_positions = []
+        std_positions = []
+        try:
+            result = await self.get_unified_trader_positions_perp(
+                uid=uid,
+                api_identity=api_identity,
+            )
+            perp_positions = result.positions
+        except Exception as ex:
+            if not no_warn:
+                logger.warning(f"Failed to fetch perp positions of {uid}: {ex}")
+
+        try:
+            result = await self.get_unified_trader_positions_std(
+                uid=uid,
+            )
+            std_positions = result.positions
+        except Exception as ex:
+            if not no_warn:
+                logger.warning(f"Failed to fetch std positions of {uid}: {ex}")
+
+        unified_result = UnifiedTraderPositions()
+        unified_result.positions = perp_positions + std_positions
+        return unified_result
+
+    async def get_unified_trader_positions_perp(
+        self,
+        uid: int | str,
+        api_identity: int | str | None = None,
         sub_account_filter: str = "futures",
     ) -> UnifiedTraderPositions:
         if not api_identity:
@@ -891,7 +956,7 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
                 uid=uid,
                 sub_account_filter=sub_account_filter,
             )
-        
+
         if not api_identity:
             raise ValueError(f"Failed to fetch api_identity for user {uid}")
 
@@ -920,7 +985,9 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
             unified_pos.margin_mode = "isolated"  # TODO: fix this
             unified_pos.position_leverage = position.leverage
             unified_pos.position_pair = position.symbol.replace("-", "/")
-            unified_pos.open_time = None  # TODO: do something for this?
+            unified_pos.open_time = datetime.now(
+                pytz.UTC
+            )  # TODO: do something for this?
             unified_pos.open_price = position.avg_price
             unified_pos.initial_margin = position.margin
             unified_pos.open_price_unit = (
@@ -936,6 +1003,65 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
 
         return unified_result
 
+    async def get_unified_trader_positions_std(
+        self,
+        uid: int | str,
+        page_offset: int = 0,
+        page_size: int = 50,
+    ) -> UnifiedTraderPositions:
+        unified_result = UnifiedTraderPositions()
+        unified_result.positions = []
+        current_page_id = page_offset - 1
+
+        while True:
+            current_page_id += 1
+            try:
+                result = await self.get_copy_trader_std_futures_positions(
+                    uid=uid,
+                    page_size=page_size,
+                    page_id=current_page_id,
+                )
+
+                if result.code != 0 and not result.data:
+                    if result.msg:
+                        raise ExchangeError(f"got error from API: {result.msg}")
+                    raise ExchangeError(
+                        f"got unknown error from bx API while fetching std positions for {uid}"
+                    )
+
+                for position in result.data.positions:
+                    unified_pos = UnifiedPositionInfo()
+                    unified_pos.position_id = position.order_no
+                    unified_pos.position_pnl = (
+                        position.current_price - position.display_price
+                    ) * position.amount
+                    unified_pos.position_side = (
+                        "LONG" if position.amount > 0 else "SHORT"
+                    )
+                    unified_pos.margin_mode = "isolated"  # TODO: fix this
+                    unified_pos.position_leverage = position.lever_times
+                    unified_pos.position_pair = f"{position.quotation_coin_vo.coin.name}/{position.margin_coin_name}"
+                    unified_pos.open_time = position.create_time
+                    unified_pos.open_price = position.display_price
+                    unified_pos.initial_margin = position.margin
+                    unified_pos.open_price_unit = position.margin_coin_name
+
+                    last_candle = await self.get_last_candle(unified_pos.position_pair)
+                    if last_candle:
+                        unified_pos.last_price = last_candle.close_price
+                        unified_pos.last_volume = last_candle.quote_volume
+
+                    unified_result.positions.append(unified_pos)
+
+                if int(result.data.total_str) <= len(unified_result.positions):
+                    # all is done
+                    return unified_result
+            except Exception as ex:
+                logger.warning(
+                    f"Failed to fetch std positions from exchange for {uid}: {ex}"
+                )
+                return unified_result
+
     async def get_unified_trader_info(
         self,
         uid: int | str,
@@ -945,8 +1071,8 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
         )
         if resume_resp.code != 0 and not resume_resp.data:
             if resume_resp.msg:
-                raise ValueError(f"got error from API: {resume_resp.msg}")
-            raise ValueError(
+                raise ExchangeError(f"got error from API: {resume_resp.msg}")
+            raise ExchangeError(
                 f"got unknown error from bx API while fetching resume for {uid}"
             )
 

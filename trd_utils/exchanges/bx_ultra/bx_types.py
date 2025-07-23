@@ -1221,6 +1221,75 @@ class ContractConfigResponse(BxApiResponse):
 
 ###########################################################
 
+# region std futures types
+
+
+class CopyTraderStdFuturesPositionInfo(BaseModel):
+    order_no: str = None
+    quotation_coin_vo: QuotationCoinVOInfo = None
+    margin: Decimal = None
+    margin_coin_name: str = None
+    lever_times: Decimal = None
+    display_lever_times: Decimal = None
+    amount: Decimal = None
+    display_price: Decimal = None
+    display_close_price: Decimal = None
+    order_type: int = None
+    close_type: int = None
+    status: Any = None
+    open_date: datetime = None
+    fees: Decimal = None
+    lever_fee: Decimal = None
+    name: str = None
+    order_create_type: int = None
+    hide_price: bool = None
+    fee_rate: Decimal = None
+    hide: bool = None
+    liquidation_desc: str = None
+    contract_account_mode: Any = None
+    current_price: Decimal = None
+    sys_force_price: Decimal = None
+    fund_type: int = None
+    interest: Any = None
+    order_open_trade: OrderOpenTradeInfo = None
+    order_debit: OrderDebitInfo = None
+    open_rate: Decimal = None
+    close_rate: Decimal = None
+    market_status: int = None
+    create_time: datetime = None
+    coupon_amount: Decimal = None
+    stop_profit_rate: Decimal = None
+    stop_loss_rate: Decimal = None
+    stop_profit_modify_time: datetime = None
+    stop_loss_modify_time: datetime = None
+    show_adjust_margin: int = None
+    trailing_stop: Decimal = None
+    trailing_close_price: Decimal = None
+    stop_rate: Decimal = None
+    profit_loss_info: ProfitLossInfoContainer = None
+    stop_offset_rate: None
+
+    def __str__(self):
+        return super().__str__()
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class CopyTraderStdFuturesPositionsResult(BaseModel):
+    page_id: int = None
+    total_str: str = None
+    positions: list[CopyTraderStdFuturesPositionInfo] = None
+
+
+class CopyTraderStdFuturesPositionsResponse(BxApiResponse):
+    data: CopyTraderStdFuturesPositionsResult = None
+
+
+# endregion
+
+###########################################################
+
 # region contract delegation types
 
 
