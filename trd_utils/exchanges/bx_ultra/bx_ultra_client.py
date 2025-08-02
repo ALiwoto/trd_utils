@@ -83,7 +83,8 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
     # region client parameters
     we_api_base_host: str = "\u0061pi-\u0061pp.w\u0065-\u0061pi.com"
     we_api_base_url: str = "https://\u0061pi-\u0061pp.w\u0065-\u0061pi.com/\u0061pi"
-    ws_we_api_base_url: str = "wss://ws-market-swap.w\u0065-\u0061pi.com/ws"
+    ws_we_api_base_url: str = "wss://ws-market-sw\u0061p.w\u0065-\u0061pi.com/ws"
+    f_ws_we_api_base_url: str = "wss://f-ws-\u0061pp.w\u0065-\u0061pi.com/market"
     original_base_host: str = "https://\u0062ing\u0078.co\u006d"
     qq_os_base_host: str = "https://\u0061pi-\u0061pp.\u0071\u0071-os.com"
     qq_os_base_url: str = "https://\u0061pi-\u0061pp.\u0071\u0071-os.com/\u0061pi"
@@ -283,7 +284,7 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
 
     # endregion
     ###########################################################
-    # region ws-subscribes
+    # region ws last-candle methods
     async def do_price_subscribe(self) -> None:
         """
         Subscribes to the price changes coming from the exchange.

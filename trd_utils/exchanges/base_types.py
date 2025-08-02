@@ -50,6 +50,34 @@ class UnifiedPositionInfo(BaseModel):
     # not all exchanges support this yet, so use it with caution.
     last_volume: Decimal | None = None
 
+    def recalculate_pnl(self) -> tuple[Decimal, Decimal]:
+        """
+        Recalculates the PnL based on the available data.
+        This requires `last_price`, `open_price`, `initial_margin`,
+        and `position_leverage` to be set.
+
+        Returns:
+            The recalculated (PnL, percentage) as a Decimal, or None if calculation
+            is not possible with the current data.
+        """
+        if not self.position_leverage:
+            self.position_leverage = 1
+
+        if not all([self.last_price, self.open_price, self.initial_margin]):
+            # Not enough data to calculate PnL.
+            return None
+
+        price_change_percentage = (self.last_price - self.open_price) / self.open_price
+        if self.position_side == "SHORT":
+            # For a short position, profit is made when the price goes down.
+            price_change_percentage *= -1
+
+        pnl_percentage = self.position_leverage * price_change_percentage
+        # PnL = Initial Margin * Leverage * Price Change %
+        pnl = self.initial_margin * pnl_percentage
+        self.position_pnl = pnl
+        return (pnl, pnl_percentage)
+
     def __str__(self):
         parts = []
 
