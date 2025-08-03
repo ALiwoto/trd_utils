@@ -3,7 +3,6 @@ from decimal import Decimal
 import json
 from typing import (
     Union,
-    get_type_hints,
     Any,
     get_args as get_type_args,
 )
@@ -12,6 +11,9 @@ import dateutil.parser
 
 from trd_utils.date_utils.datetime_helpers import dt_from_ts, dt_to_ts
 from trd_utils.html_utils.html_formats import camel_to_snake
+from trd_utils.types_helper.model_config import ModelConfig
+from trd_utils.types_helper.ultra_list import convert_to_ultra_list
+from trd_utils.types_helper.utils import AbstractModel, get_my_field_types
 
 # Whether to use ultra-list instead of normal python list or not.
 # This might be convenient in some cases, but it is not recommended
@@ -24,27 +26,11 @@ ULTRA_LIST_ENABLED: bool = False
 # attribute names are converted to snake_case.
 SET_CAMEL_ATTR_NAMES = False
 
-
-def get_my_field_types(cls):
-    type_hints = {}
-    for current_cls in cls.__class__.__mro__:
-        if current_cls is object or current_cls is BaseModel:
-            break
-        type_hints.update(get_type_hints(current_cls))
-    return type_hints
-
-
-def get_real_attr(cls, attr_name):
-    if cls is None:
-        return None
-
-    if isinstance(cls, dict):
-        return cls.get(attr_name, None)
-
-    if hasattr(cls, attr_name):
-        return getattr(cls, attr_name)
-
-    return None
+# The _model_config is a special field which cannot get serialized
+# nor can it get deserialized.
+SPECIAL_FIELDS = [
+    "_model_config",
+]
 
 
 def is_base_model_type(expected_type: type) -> bool:
@@ -176,41 +162,13 @@ def generic_obj_to_value(
     raise TypeError(f"unsupported type: {type(value)}")
 
 
-class UltraList(list):
-    def __getattr__(self, attr):
-        if len(self) == 0:
-            return None
-        return UltraList([get_real_attr(item, attr) for item in self])
+class BaseModel(AbstractModel):
+    _model_config: ModelConfig = None
 
-
-def convert_to_ultra_list(value: Any) -> UltraList:
-    if not value:
-        return UltraList()
-
-    # Go through all fields of the value and convert them to
-    # UltraList if they are lists
-
-    try:
-        if isinstance(value, list):
-            return UltraList([convert_to_ultra_list(item) for item in value])
-        elif isinstance(value, dict):
-            return {k: convert_to_ultra_list(v) for k, v in value.items()}
-        elif isinstance(value, tuple):
-            return tuple(convert_to_ultra_list(v) for v in value)
-        elif isinstance(value, set):
-            return {convert_to_ultra_list(v) for v in value}
-
-        for attr, attr_value in get_my_field_types(value).items():
-            if isinstance(attr_value, list):
-                setattr(value, attr, convert_to_ultra_list(getattr(value, attr)))
-
-        return value
-    except Exception:
-        return value
-
-
-class BaseModel:
     def __init__(self, **kwargs):
+        if not self._model_config:
+            self._model_config = ModelConfig()
+
         annotations = get_my_field_types(self)
         for key, value in kwargs.items():
             corrected_key = key
@@ -221,6 +179,12 @@ class BaseModel:
                     # just ignore and continue
                     annotations[key] = Any
                     annotations[corrected_key] = Any
+
+            if corrected_key in SPECIAL_FIELDS or (
+                self._model_config.ignored_fields
+                and corrected_key in self._model_config.ignored_fields
+            ):
+                continue
 
             expected_type = annotations[corrected_key]
             if hasattr(self, "_get_" + corrected_key + "_type"):
@@ -344,11 +308,17 @@ class BaseModel:
         annotations = get_my_field_types(self)
         result_dict = {}
         for key, _ in annotations.items():
-            if not isinstance(key, str):
+            if not isinstance(key, str) or key in SPECIAL_FIELDS:
                 continue
 
             if key.startswith("__") or key.startswith(f"_{self.__class__.__name__}__"):
                 # ignore private attributes
+                continue
+
+            if (
+                self._model_config.ignored_fields
+                and key in self._model_config.ignored_fields
+            ):
                 continue
 
             normalized_value = value_to_normal_obj(

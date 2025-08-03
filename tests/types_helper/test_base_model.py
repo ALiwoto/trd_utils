@@ -2,16 +2,27 @@
 from trd_utils.types_helper import (
     base_model,
     BaseModel,
+    ignore_json_fields,
 )
 
 # since we are testing, performance overhead of UltraList is not a concern
 base_model.ULTRA_LIST_ENABLED = True
 
+@ignore_json_fields(
+    fields=[
+        "some_field1",
+        "some_field3",
+    ],
+)
 class GroupContainer(BaseModel):
     group_name: str = None
     id: int = None
     created_at: str = None
     something: str = "default value here"
+
+    some_field1: int = 10
+    some_field2: int = 20
+    some_field3: int = 100
 
 class MyData(BaseModel):
     groups: dict[str, GroupContainer] = None
@@ -33,15 +44,20 @@ def test_my_data1():
         id=10,
         created_at=1234,
         something=None,
+        some_field3=200, # this should get ignored
     )
 
     result = data.serialize(omit_none=False)
     print(result)
 
+    assert result.find("some_field1") == -1
+
     my_data = MyData.deserialize(result)
     print(my_data.groups)
 
     assert my_data is not None
+    assert my_data.main_group.some_field2 == 20
+    assert my_data.main_group.some_field3 == 100
     assert my_data.main_group.something is None
     assert my_data.some_lists[0][0][0] == "a"
 
