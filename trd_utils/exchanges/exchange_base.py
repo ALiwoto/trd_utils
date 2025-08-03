@@ -16,14 +16,15 @@ from trd_utils.types_helper.base_model import BaseModel
 
 logger = logging.getLogger(__name__)
 
-class JWTManager():
+
+class JWTManager:
     _jwt_string: str = None
 
     def __init__(self, jwt_string: str):
         self._jwt_string = jwt_string
         try:
-            payload_b64 = self._jwt_string.split('.')[1]
-            payload_bytes = base64.urlsafe_b64decode(payload_b64 + '==')
+            payload_b64 = self._jwt_string.split(".")[1]
+            payload_bytes = base64.urlsafe_b64decode(payload_b64 + "==")
             self.payload = json.loads(payload_bytes)
         except Exception:
             self.payload = {}
@@ -31,8 +32,9 @@ class JWTManager():
     def is_expired(self):
         if "exp" not in self.payload:
             return False
-        
+
         return time.time() > self.payload["exp"]
+
 
 class ExchangeBase(ABC):
     ###########################################################
@@ -82,6 +84,8 @@ class ExchangeBase(ABC):
     async def get_unified_trader_positions(
         self,
         uid: int | str,
+        no_warn: bool = False,
+        min_margin: Decimal = 0,
     ) -> UnifiedTraderPositions:
         """
         Returns the unified version of all currently open positions of the specific

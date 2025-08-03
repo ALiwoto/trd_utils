@@ -323,6 +323,8 @@ class BlofinClient(ExchangeBase):
     async def get_unified_trader_positions(
         self,
         uid: int | str,
+        no_warn: bool = False,
+        min_margin: Decimal = 0,
     ) -> UnifiedTraderPositions:
         result = await self.get_copy_trader_all_order_list(
             uid=uid,
@@ -343,6 +345,12 @@ class BlofinClient(ExchangeBase):
             unified_pos.open_price = position.avg_open_price
             unified_pos.open_price_unit = position.symbol.split("-")[-1]
             unified_pos.initial_margin = position.get_initial_margin()
+            if min_margin and (
+                not unified_pos.initial_margin
+                or unified_pos.initial_margin < min_margin
+            ):
+                continue
+
             unified_result.positions.append(unified_pos)
 
         return unified_result

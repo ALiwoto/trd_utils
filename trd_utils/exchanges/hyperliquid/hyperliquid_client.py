@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from decimal import Decimal
 import json
@@ -11,9 +10,15 @@ import pytz
 
 from trd_utils.cipher import AESCipher
 from trd_utils.common_utils.wallet_utils import shorten_wallet_address
-from trd_utils.exchanges.base_types import UnifiedPositionInfo, UnifiedTraderInfo, UnifiedTraderPositions
+from trd_utils.exchanges.base_types import (
+    UnifiedPositionInfo,
+    UnifiedTraderInfo,
+    UnifiedTraderPositions,
+)
 from trd_utils.exchanges.exchange_base import ExchangeBase
-from trd_utils.exchanges.hyperliquid.hyperliquid_types import TraderPositionsInfoResponse
+from trd_utils.exchanges.hyperliquid.hyperliquid_types import (
+    TraderPositionsInfoResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +80,7 @@ class HyperLiquidClient(ExchangeBase):
             model_type=TraderPositionsInfoResponse,
         )
 
-    #endregion
+    # endregion
     ###########################################################
     # region another-thing
     # async def get_another_thing_info(self, uid: int) -> AnotherThingInfoResponse:
@@ -151,6 +156,8 @@ class HyperLiquidClient(ExchangeBase):
     async def get_unified_trader_positions(
         self,
         uid: int | str,
+        no_warn: bool = False,
+        min_margin: Decimal = 0,
     ) -> UnifiedTraderPositions:
         result = await self.get_trader_positions_info(
             uid=uid,
@@ -159,6 +166,11 @@ class HyperLiquidClient(ExchangeBase):
         unified_result.positions = []
         for position_container in result.asset_positions:
             position = position_container.position
+            if min_margin and (
+                not position.margin_used or position.margin_used < min_margin
+            ):
+                continue
+
             unified_pos = UnifiedPositionInfo()
             unified_pos.position_id = position.get_position_id()
             unified_pos.position_pnl = round(position.unrealized_pnl, 3)
@@ -166,7 +178,9 @@ class HyperLiquidClient(ExchangeBase):
             unified_pos.margin_mode = position.leverage.type
             unified_pos.position_leverage = Decimal(position.leverage.value)
             unified_pos.position_pair = f"{position.coin}/USDT"
-            unified_pos.open_time = datetime.now(pytz.UTC) # hyperliquid doesn't provide this...
+            unified_pos.open_time = datetime.now(
+                pytz.UTC
+            )  # hyperliquid doesn't provide this...
             unified_pos.open_price = position.entry_px
             unified_pos.open_price_unit = "USDT"
             unified_pos.initial_margin = position.margin_used

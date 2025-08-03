@@ -920,6 +920,7 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
         uid: int | str,
         api_identity: int | str | None = None,
         no_warn: bool = False,
+        min_margin: Decimal = 0,
     ) -> UnifiedTraderPositions:
         perp_positions = []
         std_positions = []
@@ -930,26 +931,38 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
             result = await self.get_unified_trader_positions_perp(
                 uid=uid,
                 api_identity=api_identity,
+                min_margin=min_margin,
             )
             perp_positions = result.positions
         except Exception as ex:
+            err_str = f"{ex}"
+            if err_str.find("as the client has been closed") != -1:
+                raise ex
+
             if not no_warn:
-                perp_ex = f"{ex}"
+                logger.warning(f"Failed to fetch perp positions of {uid}: {ex}")
+            perp_ex = ex
 
         try:
             result = await self.get_unified_trader_positions_std(
                 uid=uid,
+                min_margin=min_margin,
             )
             std_positions = result.positions
         except Exception as ex:
+            err_str = f"{ex}"
+            if err_str.find("as the client has been closed") != -1:
+                raise ex
+
             if not no_warn:
-                std_ex = f"{ex}"
+                logger.warning(f"Failed to fetch std positions of {uid}: {ex}")
+            std_ex = ex
 
         if not perp_positions and not std_positions:
-            if perp_ex:
-                logger.warning(f"Failed to fetch perp positions of {uid}: {perp_ex}")
-            if std_ex:
-                logger.warning(f"Failed to fetch std positions of {uid}: {std_ex}")
+            if perp_ex or std_ex:
+                raise RuntimeError(
+                    f"Failed to fetch both std and perp positions: perp: {perp_ex}; std: {std_ex}"
+                )
 
         unified_result = UnifiedTraderPositions()
         unified_result.positions = perp_positions + std_positions
@@ -960,6 +973,7 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
         uid: int | str,
         api_identity: int | str | None = None,
         sub_account_filter: str = "futures",
+        min_margin: Decimal = 0,
     ) -> UnifiedTraderPositions:
         if not api_identity:
             api_identity = await self.get_trader_api_identity(
@@ -988,6 +1002,9 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
         unified_result = UnifiedTraderPositions()
         unified_result.positions = []
         for position in result.data.positions:
+            if min_margin and (not position.margin or position.margin < min_margin):
+                continue
+
             unified_pos = UnifiedPositionInfo()
             unified_pos.position_id = position.position_no
             unified_pos.position_pnl = position.unrealized_pnl
@@ -1019,6 +1036,7 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
         page_offset: int = 0,
         page_size: int = 50,
         delay_amount: float = 1,
+        min_margin: Decimal = 0,
     ) -> UnifiedTraderPositions:
         unified_result = UnifiedTraderPositions()
         unified_result.positions = []
@@ -1041,6 +1059,9 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
                     )
 
                 for position in result.data.positions:
+                    if min_margin and (not position.margin or position.margin < min_margin):
+                        continue
+
                     unified_pos = UnifiedPositionInfo()
                     unified_pos.position_id = position.order_no
                     unified_pos.position_pnl = (
