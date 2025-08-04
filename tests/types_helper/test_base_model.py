@@ -1,4 +1,5 @@
 # import pytest
+from decimal import Decimal
 from trd_utils.types_helper import (
     base_model,
     BaseModel,
@@ -24,12 +25,25 @@ class GroupContainer(BaseModel):
     some_field2: int = 20
     some_field3: int = 100
 
+class MultiTypeHint(BaseModel):
+    cool_field1: Decimal | None = None
+
 class MyData(BaseModel):
     groups: dict[str, GroupContainer] = None
     some_lists: list[list[list[str]]] = None
     main_group: GroupContainer = None
     some_none_value: list = None
 
+def test_multi_type_hints():
+    pos = MultiTypeHint()
+    pos.cool_field1 = 1000
+
+    result = pos.serialize()
+    assert result.find("cool_field") != -1
+
+    my_pos = MultiTypeHint.deserialize(result)
+
+    assert my_pos.cool_field1 == pos.cool_field1
 
 def test_my_data1():
     data = MyData()

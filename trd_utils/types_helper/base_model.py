@@ -13,7 +13,7 @@ from trd_utils.date_utils.datetime_helpers import dt_from_ts, dt_to_ts
 from trd_utils.html_utils.html_formats import camel_to_snake
 from trd_utils.types_helper.model_config import ModelConfig
 from trd_utils.types_helper.ultra_list import convert_to_ultra_list
-from trd_utils.types_helper.utils import AbstractModel, get_my_field_types
+from trd_utils.types_helper.utils import AbstractModel, get_my_field_types, is_type_optional
 
 # Whether to use ultra-list instead of normal python list or not.
 # This might be convenient in some cases, but it is not recommended
@@ -199,7 +199,7 @@ class BaseModel(AbstractModel):
 
             expected_type_args = get_type_args(expected_type)
             expected_type_name = getattr(expected_type, "__name__", None)
-            is_optional_type = expected_type_name == "Optional"
+            is_optional_type = is_type_optional(expected_type)
             is_dict_type = expected_type_name == "dict"
             # maybe in the future we can have some other usages for is_optional_type
             # variable or something like that.
@@ -278,9 +278,16 @@ class BaseModel(AbstractModel):
         #         raise ValueError(f"Missing required field: {field}")
 
     @classmethod
-    def deserialize(cls, json_data: Union[str, dict]):
+    def deserialize(
+        cls,
+        json_data: Union[str, dict],
+        parse_float=Decimal,
+    ):
         if isinstance(json_data, str):
-            data = json.loads(json_data)
+            data = json.loads(
+                json_data,
+                parse_float=parse_float,
+            )
         else:
             data = json_data
         return cls(**data)

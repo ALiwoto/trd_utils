@@ -5,6 +5,18 @@ from typing import (
 class AbstractModel:
     pass
 
+def is_type_optional(target: type) -> bool:
+    if getattr(target, "__name__", None) == "Optional":
+        # e.g: my_field: Optional[str] = None
+        return True
+    
+    target_args = getattr(target, "__args__", None)
+    if target_args and len(target_args) > 1 and target_args[1] is type(None):
+        # e.g: my_field: Decimal | None = None
+        return True
+    
+    return False
+
 def get_real_attr(cls, attr_name):
     if cls is None:
         return None

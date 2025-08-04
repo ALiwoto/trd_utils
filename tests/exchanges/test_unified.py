@@ -7,6 +7,7 @@ from trd_utils.exchanges import (
     HyperLiquidClient,
 )
 
+from trd_utils.exchanges.base_types import UnifiedPositionInfo
 from trd_utils.exchanges.exchange_base import ExchangeBase
 from trd_utils.exchanges.okx.okx_client import OkxClient
 from trd_utils.exchanges.price_fetcher import IPriceFetcher
@@ -135,3 +136,15 @@ async def test_unified_get_trader_info():
     await cleanup_clients(
         all_clients=all_clients,
     )
+
+
+def test_unified_serialization():
+    pos = UnifiedPositionInfo()
+    pos.initial_margin = 1000
+
+    result = pos.serialize()
+    print(result)
+
+    my_pos = UnifiedPositionInfo.deserialize(result)
+
+    assert my_pos.initial_margin == pos.initial_margin
