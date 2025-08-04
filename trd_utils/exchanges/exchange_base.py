@@ -84,7 +84,6 @@ class ExchangeBase(ABC):
     async def get_unified_trader_positions(
         self,
         uid: int | str,
-        no_warn: bool = False,
         min_margin: Decimal = 0,
     ) -> UnifiedTraderPositions:
         """

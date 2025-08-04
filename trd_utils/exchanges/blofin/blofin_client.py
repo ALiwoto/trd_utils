@@ -323,7 +323,6 @@ class BlofinClient(ExchangeBase):
     async def get_unified_trader_positions(
         self,
         uid: int | str,
-        no_warn: bool = False,
         min_margin: Decimal = 0,
     ) -> UnifiedTraderPositions:
         result = await self.get_copy_trader_all_order_list(
