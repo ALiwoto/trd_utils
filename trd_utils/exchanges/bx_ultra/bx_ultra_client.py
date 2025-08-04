@@ -77,6 +77,8 @@ logger = logging.getLogger(__name__)
 # specific to the current session that is fetching them,
 user_api_identity_cache: dict[int, int] = {}
 
+__positions_hidden_warn_map: dict[str, bool] = {}
+
 
 class BXUltraClient(ExchangeBase, IPriceFetcher):
     ###########################################################
@@ -940,7 +942,11 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
                 raise ex
 
             if not no_warn:
-                logger.warning(f"Failed to fetch perp positions of {uid}: {ex}")
+                if err_str.find("positions hidden") != -1:
+                    warn_key = f"perp_{uid}"
+                    if not __positions_hidden_warn_map.get(warn_key, False):
+                        __positions_hidden_warn_map[warn_key] = True
+                    logger.warning(f"Failed to fetch perp positions of {uid}: {ex}")
             perp_ex = ex
 
         try:
@@ -955,7 +961,11 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
                 raise ex
 
             if not no_warn:
-                logger.warning(f"Failed to fetch std positions of {uid}: {ex}")
+                if err_str.find("positions hidden") != -1:
+                    warn_key = f"std_{uid}"
+                    if not __positions_hidden_warn_map.get(warn_key, False):
+                        __positions_hidden_warn_map[warn_key] = True
+                        logger.warning(f"Failed to fetch std positions of {uid}: {ex}")
             std_ex = ex
 
         if not perp_positions and not std_positions:
