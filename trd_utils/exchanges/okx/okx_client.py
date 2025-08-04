@@ -209,7 +209,8 @@ class OkxClient(ExchangeBase):
         unified_info.trader_id = account_info.unique_name or uid
         unified_info.trader_name = account_info.en_nick_name or account_info.nick_name
         unified_info.trader_url = f"{BASE_PROFILE_URL}{uid}"
-        unified_info.win_rate = overview.win_rate
+        if overview:
+            unified_info.win_rate = overview.win_rate
 
         return unified_info
 
