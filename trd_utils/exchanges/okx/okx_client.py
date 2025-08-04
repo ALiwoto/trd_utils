@@ -1,3 +1,4 @@
+from decimal import Decimal
 import json
 import logging
 import time
@@ -169,6 +170,8 @@ class OkxClient(ExchangeBase):
     async def get_unified_trader_positions(
         self,
         uid: int | str,
+        no_warn: bool = False,
+        min_margin: Decimal = 0,
     ) -> UnifiedTraderPositions:
         result = await self.get_trader_positions(
             uid=uid,
@@ -176,6 +179,8 @@ class OkxClient(ExchangeBase):
         unified_result = UnifiedTraderPositions()
         unified_result.positions = []
         for position in result.data[0].pos_data:
+            if min_margin and (not position.margin or position.margin < min_margin):
+                continue
             unified_pos = UnifiedPositionInfo()
             unified_pos.position_id = position.pos_id
             unified_pos.position_pnl = round(position.realized_pnl, 3)
