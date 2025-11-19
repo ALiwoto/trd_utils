@@ -116,6 +116,7 @@ class ExchangeBase(ABC):
         self,
         sort_by: str = "percentage_change_24h",
         descending: bool = True,
+        allow_delisted: bool = False,
     ) -> UnifiedFuturesMarketInfo:
         """
         Returns the unified version of futures market information.

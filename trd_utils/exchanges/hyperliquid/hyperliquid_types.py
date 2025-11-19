@@ -121,7 +121,10 @@ class MetaAssetCtxResponse(BaseModel):
     assets: list[MetaAssetCtxSingleInfo] = None
 
     @staticmethod
-    def parse_from_api_resp(data: dict) -> "MetaAssetCtxResponse":
+    def parse_from_api_resp(
+        data: dict,
+        allow_delisted: bool = False,
+    ) -> "MetaAssetCtxResponse":
         resp = MetaAssetCtxResponse()
         resp.assets = []
         meta, asset_ctxs = data
@@ -131,7 +134,12 @@ class MetaAssetCtxResponse(BaseModel):
         universe = meta.get("universe", [])
 
         for meta_entry, ctx in zip(universe, asset_ctxs, strict=False):
+            if not isinstance(meta_entry, dict) or not isinstance(ctx, dict):
+                continue
+
             name = meta_entry["name"]  # e.g. "BTC", "ETH", "SOL", ...
+            if not allow_delisted and meta_entry.get("isDelisted", False):
+                continue
 
             # Convert interesting fields to floats
             mark_px = float(ctx["markPx"])

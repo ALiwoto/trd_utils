@@ -84,7 +84,10 @@ class HyperLiquidClient(ExchangeBase):
             model_type=TraderPositionsInfoResponse,
         )
 
-    async def get_meta_asset_ctx_info(self) -> MetaAssetCtxResponse:
+    async def get_meta_asset_ctx_info(
+        self,
+        allow_delisted: bool = False,
+    ) -> MetaAssetCtxResponse:
         payload = {
             "type": "metaAndAssetCtxs",
         }
@@ -96,7 +99,10 @@ class HyperLiquidClient(ExchangeBase):
             model_type=None,  # it has a weird response structure
         )
 
-        return MetaAssetCtxResponse.parse_from_api_resp(data=data)
+        return MetaAssetCtxResponse.parse_from_api_resp(
+            data=data,
+            allow_delisted=allow_delisted,
+        )
 
     # endregion
     ###########################################################
@@ -227,8 +233,11 @@ class HyperLiquidClient(ExchangeBase):
         self,
         sort_by: str = "percentage_change_24h",
         descending: bool = True,
+        allow_delisted: bool = False,
     ) -> UnifiedFuturesMarketInfo:
-        asset_ctxs = await self.get_meta_asset_ctx_info()
+        asset_ctxs = await self.get_meta_asset_ctx_info(
+            allow_delisted=allow_delisted,
+        )
         unified_info = UnifiedFuturesMarketInfo()
         unified_info.sorted_markets = []
 
@@ -244,21 +253,20 @@ class HyperLiquidClient(ExchangeBase):
             current_market.daily_volume = current_asset.day_ntl_vlm
             current_market.open_interest = current_asset.open_interest
             unified_info.sorted_markets.append(current_market)
-        
+
         if not sort_by:
             # we won't sort anything
             return unified_info
-        
+
         def key_fn(market: UnifiedSingleFutureMarketInfo):
             return getattr(market, sort_by, Decimal(0))
-        
+
         unified_info.sorted_markets = sorted(
             unified_info.sorted_markets,
             key=key_fn,
             reverse=descending,
         )
         return unified_info
-        
 
     # endregion
     ###########################################################
