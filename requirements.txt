@@ -3,3 +3,4 @@ websockets>=15.0.1
 python-dateutil>=2.9.0.post0
 pytest-asyncio>=1.0.0
 httpx[http2]>=0.24.1
+pytz>=2022.1

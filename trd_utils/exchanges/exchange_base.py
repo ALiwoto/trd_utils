@@ -11,7 +11,11 @@ import time
 import httpx
 from websockets.asyncio.connection import Connection as WSConnection
 
-from trd_utils.exchanges.base_types import UnifiedTraderInfo, UnifiedTraderPositions
+from trd_utils.exchanges.base_types import (
+    UnifiedFuturesMarketInfo,
+    UnifiedTraderInfo,
+    UnifiedTraderPositions,
+)
 from trd_utils.types_helper.base_model import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -108,6 +112,21 @@ class ExchangeBase(ABC):
             "Please use a real exchange class inheriting and implementing this method."
         )
 
+    async def get_unified_futures_market_info(
+        self,
+        sort_by: str = "percentage_change_24h",
+        descending: bool = True,
+    ) -> UnifiedFuturesMarketInfo:
+        """
+        Returns the unified version of futures market information.
+        Different exchanges might return and fill different information according to the
+        data returned from their public APIs.
+        """
+        raise NotImplementedError(
+            "This method is not implemented in ExchangeBase class. "
+            "Please use a real exchange class inheriting and implementing this method."
+        )
+
     # endregion
     ###########################################################
     # region client helper methods
@@ -191,7 +210,7 @@ class ExchangeBase(ABC):
         self,
         response: httpx.Response,
         parse_float=None,
-    ):
+    ) -> dict:
         try:
             return response.json(parse_float=parse_float)
         except UnicodeDecodeError:

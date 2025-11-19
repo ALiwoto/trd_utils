@@ -11,12 +11,15 @@ import pytz
 from trd_utils.cipher import AESCipher
 from trd_utils.common_utils.wallet_utils import shorten_wallet_address
 from trd_utils.exchanges.base_types import (
+    UnifiedFuturesMarketInfo,
     UnifiedPositionInfo,
+    UnifiedSingleFutureMarketInfo,
     UnifiedTraderInfo,
     UnifiedTraderPositions,
 )
 from trd_utils.exchanges.exchange_base import ExchangeBase
 from trd_utils.exchanges.hyperliquid.hyperliquid_types import (
+    MetaAssetCtxResponse,
     TraderPositionsInfoResponse,
 )
 
@@ -31,6 +34,7 @@ class HyperLiquidClient(ExchangeBase):
     hyperliquid_api_base_host: str = "https://api.hyperliquid.xyz"
     hyperliquid_api_base_url: str = "https://api.hyperliquid.xyz"
     origin_header: str = "app.hyperliquid.xy"
+    default_quote_token: str = "USDC"
 
     # endregion
     ###########################################################
@@ -79,6 +83,20 @@ class HyperLiquidClient(ExchangeBase):
             content=payload,
             model_type=TraderPositionsInfoResponse,
         )
+
+    async def get_meta_asset_ctx_info(self) -> MetaAssetCtxResponse:
+        payload = {
+            "type": "metaAndAssetCtxs",
+        }
+        headers = self.get_headers()
+        data = await self.invoke_post(
+            f"{self.hyperliquid_api_base_host}/info",
+            headers=headers,
+            content=payload,
+            model_type=None,  # it has a weird response structure
+        )
+
+        return MetaAssetCtxResponse.parse_from_api_resp(data=data)
 
     # endregion
     ###########################################################
@@ -176,12 +194,13 @@ class HyperLiquidClient(ExchangeBase):
             unified_pos.position_side = position.get_side()
             unified_pos.margin_mode = position.leverage.type
             unified_pos.position_leverage = Decimal(position.leverage.value)
-            unified_pos.position_pair = f"{position.coin}/USDT"
+            unified_pos.position_pair = f"{position.coin}/{self.default_quote_token}"
             unified_pos.open_time = datetime.now(
                 pytz.UTC
             )  # hyperliquid doesn't provide this...
             unified_pos.open_price = position.entry_px
-            unified_pos.open_price_unit = "USDT"
+            unified_pos.open_price_unit = self.default_quote_token
+            unified_pos.position_size = abs(position.szi)
             unified_pos.initial_margin = position.margin_used
             unified_result.positions.append(unified_pos)
 
@@ -203,6 +222,43 @@ class HyperLiquidClient(ExchangeBase):
         unified_info.win_rate = None
 
         return unified_info
+
+    async def get_unified_futures_market_info(
+        self,
+        sort_by: str = "percentage_change_24h",
+        descending: bool = True,
+    ) -> UnifiedFuturesMarketInfo:
+        asset_ctxs = await self.get_meta_asset_ctx_info()
+        unified_info = UnifiedFuturesMarketInfo()
+        unified_info.sorted_markets = []
+
+        for current_asset in asset_ctxs.assets:
+            current_market = UnifiedSingleFutureMarketInfo()
+            current_market.name = current_asset.symbol
+            current_market.pair = f"{current_asset.symbol}/{self.default_quote_token}"
+            current_market.price = current_asset.mark_px
+            current_market.previous_day_price = current_asset.prev_day_px
+            current_market.absolute_change_24h = current_asset.change_abs
+            current_market.percentage_change_24h = current_asset.change_pct
+            current_market.funding_rate = current_asset.funding
+            current_market.daily_volume = current_asset.day_ntl_vlm
+            current_market.open_interest = current_asset.open_interest
+            unified_info.sorted_markets.append(current_market)
+        
+        if not sort_by:
+            # we won't sort anything
+            return unified_info
+        
+        def key_fn(market: UnifiedSingleFutureMarketInfo):
+            return getattr(market, sort_by, Decimal(0))
+        
+        unified_info.sorted_markets = sorted(
+            unified_info.sorted_markets,
+            key=key_fn,
+            reverse=descending,
+        )
+        return unified_info
+        
 
     # endregion
     ###########################################################

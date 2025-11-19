@@ -150,3 +150,52 @@ class UnifiedTraderInfo(BaseModel):
 
     def __repr__(self):
         return self.__str__()
+
+
+class UnifiedSingleFutureMarketInfo(BaseModel):
+    name: str = None
+    pair: str = None
+    price: Decimal = None
+    previous_day_price: Decimal = None
+    absolute_change_24h: Decimal = None
+    percentage_change_24h: Decimal = None
+    funding_rate: Decimal = None
+    daily_volume: Decimal = None
+    open_interest: Decimal = None
+
+    def __str__(self):
+        return (
+            f"{self.name} | Price: {round(self.price, 4)} "
+            f"| 24h Change: {round(self.percentage_change_24h, 4)}% "
+            f"| 24h Volume: {round(self.daily_volume, 4)} "
+            f"| Funding Rate: {round(self.funding_rate, 6)}% "
+            f"| Preferred Side: {self.get_preferred_position_side()}"
+        )
+    
+    def __repr__(self):
+        return self.__str__()
+    
+    def get_preferred_position_side(self) -> str:
+        return "LONG" if self.funding_rate <= 0 else "SHORT"
+
+class UnifiedFuturesMarketInfo(BaseModel):
+    sorted_markets: list[UnifiedSingleFutureMarketInfo] = None
+
+    def __str__(self):
+        return f"Total Markets: {len(self.sorted_markets) if self.sorted_markets else 0}"
+    
+    def __repr__(self):
+        return self.__str__()
+    
+    def find_market_by_name(
+        self,
+        name: str,
+    ) -> UnifiedSingleFutureMarketInfo | None:
+        if not self.sorted_markets:
+            return None
+        
+        for market in self.sorted_markets:
+            if market.name.lower() == name.lower():
+                return market
+        
+        return None

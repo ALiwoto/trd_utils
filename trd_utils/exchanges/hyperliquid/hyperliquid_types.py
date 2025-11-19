@@ -59,8 +59,10 @@ class PositionInfo(BaseModel):
         it with other positions...
         """
         return (
-            f"{self.coin}-{self.leverage.value}-{1 if self.szi > 0 else 0}"
-        ).encode("utf-8").hex()
+            (f"{self.coin}-{self.leverage.value}-{1 if self.szi > 0 else 0}")
+            .encode("utf-8")
+            .hex()
+        )
 
     def get_leverage(self) -> str:
         return f"{self.leverage.value}x ({self.leverage.type})"
@@ -84,7 +86,7 @@ class AssetPosition(BaseModel):
 
     def __str__(self):
         return self.__str__()
-    
+
     def get_position_id(self) -> str:
         return self.position.get_position_id()
 
@@ -102,6 +104,70 @@ class TraderPositionsInfoResponse(BaseModel):
     cross_maintenance_margin_used: Decimal = None
     withdrawable: Decimal = None
     asset_positions: list[AssetPosition] = None
+
+
+class MetaAssetCtxSingleInfo(BaseModel):
+    symbol: str = None
+    mark_px: Decimal = None
+    prev_day_px: Decimal = None
+    change_abs: Decimal = None
+    change_pct: Decimal = None
+    funding: Decimal = None
+    day_ntl_vlm: Decimal = None
+    open_interest: Decimal = None
+
+
+class MetaAssetCtxResponse(BaseModel):
+    assets: list[MetaAssetCtxSingleInfo] = None
+
+    @staticmethod
+    def parse_from_api_resp(data: dict) -> "MetaAssetCtxResponse":
+        resp = MetaAssetCtxResponse()
+        resp.assets = []
+        meta, asset_ctxs = data
+        if not isinstance(meta, dict) or not isinstance(asset_ctxs, list):
+            raise ValueError("Unexpected response structure from metaAndAssetCtxs")
+
+        universe = meta.get("universe", [])
+
+        for meta_entry, ctx in zip(universe, asset_ctxs, strict=False):
+            name = meta_entry["name"]  # e.g. "BTC", "ETH", "SOL", ...
+
+            # Convert interesting fields to floats
+            mark_px = float(ctx["markPx"])
+            prev_day_px_str = ctx.get("prevDayPx")  # may be missing for some markets
+            prev_day_px = (
+                float(prev_day_px_str)
+                if prev_day_px_str not in (None, "", "0")
+                else None
+            )
+
+            funding = float(ctx["funding"])
+            day_ntl_vlm = float(ctx["dayNtlVlm"])
+            open_interest = float(ctx["openInterest"])
+
+            if prev_day_px and prev_day_px != 0.0:
+                change_abs = mark_px - prev_day_px
+                change_pct = (change_abs / prev_day_px) * 100.0
+            else:
+                change_abs = None
+                change_pct = None
+
+            resp.assets.append(
+                MetaAssetCtxSingleInfo(
+                    **{
+                        "symbol": name,
+                        "mark_px": mark_px,
+                        "prev_day_px": prev_day_px,
+                        "change_abs": change_abs,
+                        "change_pct": change_pct,
+                        "funding": funding,
+                        "day_ntl_vlm": day_ntl_vlm,
+                        "open_interest": open_interest,
+                    },
+                )
+            )
+        return resp
 
 
 # endregion
