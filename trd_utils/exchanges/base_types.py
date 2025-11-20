@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+import statistics
 
 from trd_utils.types_helper.base_model import BaseModel
 
@@ -151,6 +152,9 @@ class UnifiedTraderInfo(BaseModel):
     def __repr__(self):
         return self.__str__()
 
+class UnifiedMarketStatistics(BaseModel):
+    mean_change_24h: Decimal = None
+    stdev_change_24h: Decimal = None
 
 class UnifiedSingleFutureMarketInfo(BaseModel):
     name: str = None
@@ -177,6 +181,15 @@ class UnifiedSingleFutureMarketInfo(BaseModel):
     
     def get_preferred_position_side(self) -> str:
         return "LONG" if self.funding_rate <= 0 else "SHORT"
+    
+    def get_z_score_24h(self, market_stats: UnifiedMarketStatistics) -> Decimal | None:
+        if not market_stats.stdev_change_24h:
+            return None
+        
+        z_score = (
+            self.percentage_change_24h - market_stats.mean_change_24h
+        ) / market_stats.stdev_change_24h
+        return z_score
 
 class UnifiedFuturesMarketInfo(BaseModel):
     sorted_markets: list[UnifiedSingleFutureMarketInfo] = None
@@ -199,3 +212,11 @@ class UnifiedFuturesMarketInfo(BaseModel):
                 return market
         
         return None
+
+    def get_statistics(self) -> UnifiedMarketStatistics:
+        changes_24h = [m.percentage_change_24h for m in self.sorted_markets]
+        s_obj = UnifiedMarketStatistics()
+        s_obj.mean_change_24h = statistics.mean(changes_24h)
+        s_obj.stdev_change_24h = statistics.stdev(changes_24h)
+
+        return s_obj
