@@ -38,6 +38,9 @@ class UnifiedPositionInfo(BaseModel):
     # The base unit that the open-price is based on (e.g. USD, USDT, USDC)
     open_price_unit: str | None = None
 
+    # The total position size.
+    position_size: Decimal | None = None
+
     # The initial amount of open_price_unit that the trader has put to open
     # this position.
     # Note that not all public APIs might provide this field.

@@ -921,7 +921,6 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
         api_identity: int | str | None = None,
         min_margin: Decimal = 0,
     ) -> UnifiedTraderPositions:
-        global _positions_hidden_warn_map
         perp_positions = []
         std_positions = []
         perp_ex: str = None
