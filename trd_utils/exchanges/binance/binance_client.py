@@ -2,6 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 import asyncio
 import logging
+from typing import Callable
 import httpx
 import pytz
 
@@ -291,6 +292,7 @@ class BinanceClient(ExchangeBase):
         allow_delisted: bool = False,
         filter_quote_token: str | None = None,
         raise_on_invalid: bool = False,
+        filter_func: Callable | None = None,
     ) -> UnifiedFuturesMarketInfo:
         # We fetch tickers and premium indices (for funding rates) in parallel
         tickers_task = self.get_market_tickers()
@@ -344,7 +346,22 @@ class BinanceClient(ExchangeBase):
             current_market.percentage_change_24h = ticker.price_change_percent
             current_market.funding_rate = funding_map.get(ticker.symbol, Decimal(0))
             current_market.daily_volume = ticker.quote_volume  # Quote Asset Volume
-            current_market.open_interest = Decimal(0) 
+            current_market.open_interest = Decimal(0)
+
+            if filter_func:
+                filter_args = {
+                    "pair": current_market.pair,
+                    "market_info": current_market,
+                    "raw_ticker": ticker,
+                    "exchange_client": self,
+                }
+                # this is defined in exchange base.
+                should_include = await self._apply_filter_func(
+                    filter_func=filter_func,
+                    func_args=filter_args,
+                )
+                if not should_include:
+                    continue
 
             unified_info.sorted_markets.append(current_market)
 

@@ -1,8 +1,9 @@
 import asyncio
 from decimal import Decimal
+import inspect
 import json
 import logging
-from typing import Type
+from typing import Callable, Type
 from abc import ABC
 
 import base64
@@ -119,6 +120,7 @@ class ExchangeBase(ABC):
         allow_delisted: bool = False,
         filter_quote_token: str | None = None,
         raise_on_invalid: bool = False,
+        filter_func: Callable | None = None,
     ) -> UnifiedFuturesMarketInfo:
         """
         Returns the unified version of futures market information.
@@ -239,6 +241,21 @@ class ExchangeBase(ABC):
 
             # Now parse the decompressed content
             return json.loads(content.decode("utf-8"), parse_float=parse_float)
+
+    async def _apply_filter_func(
+        self,
+        filter_func: Callable,
+        func_args: dict,
+    ) -> bool:
+        if inspect.iscoroutinefunction(filter_func):
+            return await filter_func(**func_args)
+        elif inspect.isfunction(filter_func) or callable(filter_func):
+            result = filter_func(**func_args)
+            
+            if inspect.iscoroutine(result):
+                return await result
+        else:
+            raise ValueError("filter_func must be a function or coroutine function.")
 
     async def __aenter__(self):
         return self

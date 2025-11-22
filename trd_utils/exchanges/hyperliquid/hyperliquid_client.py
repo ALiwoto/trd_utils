@@ -2,6 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 import json
 import logging
+from typing import Callable
 import httpx
 
 from pathlib import Path
@@ -237,6 +238,7 @@ class HyperLiquidClient(ExchangeBase):
         allow_delisted: bool = False,
         filter_quote_token: str | None = None,
         raise_on_invalid: bool = False,
+        filter_func: Callable | None = None,
     ) -> UnifiedFuturesMarketInfo:
         asset_ctxs = await self.get_meta_asset_ctx_info(
             allow_delisted=allow_delisted,
@@ -255,6 +257,21 @@ class HyperLiquidClient(ExchangeBase):
             current_market.funding_rate = current_asset.funding
             current_market.daily_volume = current_asset.day_ntl_vlm
             current_market.open_interest = current_asset.open_interest
+
+            if filter_func:
+                filter_args = {
+                    "pair": current_market.pair,
+                    "market_info": current_market,
+                    "exchange_client": self,
+                }
+                # this is defined in exchange base.
+                should_include = await self._apply_filter_func(
+                    filter_func=filter_func,
+                    func_args=filter_args,
+                )
+                if not should_include:
+                    continue
+
             unified_info.sorted_markets.append(current_market)
 
         if not sort_by:
