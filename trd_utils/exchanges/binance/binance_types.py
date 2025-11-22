@@ -95,7 +95,7 @@ class BinanceLeaderboardBaseInfoResponse(BaseModel):
 class BinanceTicker24h(BaseModel):
     symbol: str = None
     last_price: Decimal = None
-    prev_close_price: Decimal = None
+    prev_close_price: Decimal | None = None
     price_change: Decimal = None
     price_change_percent: Decimal = None
     weighted_avg_price: Decimal = None

@@ -338,10 +338,13 @@ class BinanceClient(ExchangeBase):
             
             current_market = UnifiedSingleFutureMarketInfo()
             current_market.name = base_asset
-            current_market.pair = f"{base_asset}/{quote_asset}"
+            current_market.pair = f"{base_asset}/{quote_asset}:{quote_asset}"
             
             current_market.price = ticker.last_price
-            current_market.previous_day_price = ticker.prev_close_price
+            if ticker.prev_close_price is None:
+                current_market.previous_day_price = ticker.last_price - ticker.price_change
+            else:
+                current_market.previous_day_price = ticker.prev_close_price
             current_market.absolute_change_24h = ticker.price_change
             current_market.percentage_change_24h = ticker.price_change_percent
             current_market.funding_rate = funding_map.get(ticker.symbol, Decimal(0))
