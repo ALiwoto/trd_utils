@@ -254,6 +254,7 @@ class ExchangeBase(ABC):
             
             if inspect.iscoroutine(result):
                 return await result
+            return result
         else:
             raise ValueError("filter_func must be a function or coroutine function.")
 
