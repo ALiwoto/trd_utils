@@ -158,6 +158,7 @@ class UnifiedTraderInfo(BaseModel):
 class UnifiedMarketStatistics(BaseModel):
     mean_change_24h: Decimal = None
     stdev_change_24h: Decimal = None
+    median_volume_24h: Decimal = None
 
 class UnifiedSingleFutureMarketInfo(BaseModel):
     name: str = None
@@ -218,8 +219,11 @@ class UnifiedFuturesMarketInfo(BaseModel):
 
     def get_statistics(self) -> UnifiedMarketStatistics:
         changes_24h = [m.percentage_change_24h for m in self.sorted_markets]
+        volumes_24h = [m.daily_volume for m in self.sorted_markets]
+
         s_obj = UnifiedMarketStatistics()
         s_obj.mean_change_24h = statistics.mean(changes_24h)
         s_obj.stdev_change_24h = statistics.stdev(changes_24h)
+        s_obj.median_volume_24h = statistics.median(volumes_24h) 
 
         return s_obj
