@@ -1,5 +1,5 @@
 from decimal import Decimal
-from trd_utils.types_helper import BaseModel
+from trd_utils.types_helper import BaseModel, new_list
 
 
 ###########################################################
@@ -126,7 +126,7 @@ class MetaAssetCtxResponse(BaseModel):
         allow_delisted: bool = False,
     ) -> "MetaAssetCtxResponse":
         resp = MetaAssetCtxResponse()
-        resp.assets = []
+        resp.assets = new_list()
         meta, asset_ctxs = data
         if not isinstance(meta, dict) or not isinstance(asset_ctxs, list):
             raise ValueError("Unexpected response structure from metaAndAssetCtxs")

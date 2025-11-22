@@ -19,6 +19,7 @@ from trd_utils.exchanges.okx.okx_types import (
     UserInfoHtmlParser,
     UserInfoInitialProps,
 )
+from trd_utils.types_helper import new_list
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +177,7 @@ class OkxClient(ExchangeBase):
             uid=uid,
         )
         unified_result = UnifiedTraderPositions()
-        unified_result.positions = []
+        unified_result.positions = new_list()
         for position in result.data[0].pos_data:
             if min_margin and (not position.margin or position.margin < min_margin):
                 continue

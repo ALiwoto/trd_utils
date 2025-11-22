@@ -25,6 +25,7 @@ from trd_utils.exchanges.blofin.blofin_types import (
 from trd_utils.cipher import AESCipher
 from trd_utils.exchanges.errors import ExchangeError
 from trd_utils.exchanges.exchange_base import ExchangeBase
+from trd_utils.types_helper import new_list
 
 
 BASE_PROFILE_URL = "https://blofin.com/copy-trade/details/"
@@ -329,7 +330,7 @@ class BlofinClient(ExchangeBase):
             uid=uid,
         )
         unified_result = UnifiedTraderPositions()
-        unified_result.positions = []
+        unified_result.positions = new_list()
         for position in result.data:
             unified_pos = UnifiedPositionInfo()
             unified_pos.position_id = position.id or position.order_id

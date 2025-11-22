@@ -117,6 +117,8 @@ class ExchangeBase(ABC):
         sort_by: str = "percentage_change_24h",
         descending: bool = True,
         allow_delisted: bool = False,
+        filter_quote_token: str | None = None,
+        raise_on_invalid: bool = False,
     ) -> UnifiedFuturesMarketInfo:
         """
         Returns the unified version of futures market information.

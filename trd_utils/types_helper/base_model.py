@@ -12,7 +12,7 @@ import dateutil.parser
 from trd_utils.date_utils.datetime_helpers import dt_from_ts, dt_to_ts
 from trd_utils.html_utils.html_formats import camel_to_snake
 from trd_utils.types_helper.model_config import ModelConfig
-from trd_utils.types_helper.ultra_list import convert_to_ultra_list
+from trd_utils.types_helper.ultra_list import convert_to_ultra_list, UltraList
 from trd_utils.types_helper.utils import AbstractModel, get_my_field_types, is_type_optional
 
 # Whether to use ultra-list instead of normal python list or not.
@@ -31,6 +31,17 @@ SET_CAMEL_ATTR_NAMES = False
 SPECIAL_FIELDS = [
     "_model_config",
 ]
+
+def new_list(original: Any = None) -> list:
+    if original is None:
+        original = []
+    elif not isinstance(original, list):
+        original = [original]
+
+    if ULTRA_LIST_ENABLED:
+        return UltraList(original)
+
+    return original
 
 
 def is_base_model_type(expected_type: type) -> bool:
@@ -57,7 +68,7 @@ def value_to_normal_obj(value, omit_none: bool = False):
         )
 
     if isinstance(value, list):
-        results = []
+        results = new_list()
         for current in value:
             results.append(
                 value_to_normal_obj(
@@ -121,7 +132,7 @@ def generic_obj_to_value(
         expected_type_args = get_type_args(expected_type)
 
     if isinstance(value, list):
-        result = []
+        result = new_list()
         for current in value:
             result.append(
                 generic_obj_to_value(

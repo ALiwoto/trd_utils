@@ -1,5 +1,4 @@
 
-
 from typing import Any
 from trd_utils.types_helper.utils import get_my_field_types, get_real_attr
 
@@ -11,7 +10,7 @@ class UltraList(list):
         return UltraList([get_real_attr(item, attr) for item in self])
 
 
-def convert_to_ultra_list(value: Any) -> UltraList:
+def convert_to_ultra_list(value: Any = None) -> UltraList:
     if not value:
         return UltraList()
 

@@ -1,6 +1,8 @@
 import json
 from typing import Optional
 
+from trd_utils.types_helper import new_list
+
 from .tradingview_types import CoinScanInfo
 
 
@@ -117,7 +119,7 @@ class TradingViewClient:
             raise Exception("No data found")
 
         j_data = j_result["data"]
-        all_infos = []
+        all_infos = new_list()
         for current_data in j_data:
             if not isinstance(current_data, dict):
                 continue

@@ -52,6 +52,7 @@ from trd_utils.cipher import AESCipher
 from trd_utils.exchanges.errors import ExchangeError
 from trd_utils.exchanges.exchange_base import ExchangeBase, JWTManager
 from trd_utils.exchanges.price_fetcher import IPriceFetcher
+from trd_utils.types_helper import new_list
 
 PLATFORM_ID_ANDROID = "10"
 PLATFORM_ID_WEB = "30"
@@ -921,8 +922,8 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
         api_identity: int | str | None = None,
         min_margin: Decimal = 0,
     ) -> UnifiedTraderPositions:
-        perp_positions = []
-        std_positions = []
+        perp_positions = new_list()
+        std_positions = new_list()
         perp_ex: str = None
         std_ex: str = None
 
@@ -993,7 +994,7 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
             # TODO: do proper exceptions here...
             raise ValueError("The trader has made their positions hidden")
         unified_result = UnifiedTraderPositions()
-        unified_result.positions = []
+        unified_result.positions = new_list()
         for position in result.data.positions:
             if min_margin and (not position.margin or position.margin < min_margin):
                 continue
@@ -1032,7 +1033,7 @@ class BXUltraClient(ExchangeBase, IPriceFetcher):
         min_margin: Decimal = 0,
     ) -> UnifiedTraderPositions:
         unified_result = UnifiedTraderPositions()
-        unified_result.positions = []
+        unified_result.positions = new_list()
         current_page_id = page_offset - 1
 
         while True:

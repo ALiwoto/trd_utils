@@ -19,6 +19,7 @@ from trd_utils.exchanges.binance.binance_types import (
     BinanceTicker24h,
     BinancePremiumIndex,
 )
+from trd_utils.types_helper import new_list
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,12 @@ class BinanceClient(ExchangeBase):
     binance_bapi_base_url: str = "https://www.binance.com/bapi/futures"
 
     default_quote_token: str = "USDT"
+    supported_quote_tokens: list[str] = [
+        "USDT",
+        "USDC",
+        "BUSD",
+        "BTC",
+    ]
 
     # endregion
     ###########################################################
@@ -183,6 +190,12 @@ class BinanceClient(ExchangeBase):
     def _save_session_file(self, file_path: str) -> None:
         pass
 
+    def _extract_quote_token_from_symbol(self, symbol: str) -> str:
+        for quote in self.supported_quote_tokens:
+            if symbol.endswith(quote):
+                return quote
+        return None
+
     # endregion
     ###########################################################
     # region unified methods
@@ -198,7 +211,7 @@ class BinanceClient(ExchangeBase):
         resp = await self.get_leaderboard_positions(encrypted_uid=str(uid))
 
         unified_result = UnifiedTraderPositions()
-        unified_result.positions = []
+        unified_result.positions = new_list()
 
         if (
             not resp
@@ -276,6 +289,8 @@ class BinanceClient(ExchangeBase):
         sort_by: str = "percentage_change_24h",
         descending: bool = True,
         allow_delisted: bool = False,
+        filter_quote_token: str | None = None,
+        raise_on_invalid: bool = False,
     ) -> UnifiedFuturesMarketInfo:
         # We fetch tickers and premium indices (for funding rates) in parallel
         tickers_task = self.get_market_tickers()
@@ -292,6 +307,10 @@ class BinanceClient(ExchangeBase):
         unified_info.sorted_markets = []
 
         for ticker in tickers:
+            if "_" in ticker.symbol:
+                # we don't want delivery or other special markets
+                continue
+
             symbol = ticker.symbol
 
             # Parse Base and Quote from the symbol string (e.g. BTCUSDT -> BTC, USDT)
@@ -300,15 +319,20 @@ class BinanceClient(ExchangeBase):
             quote_asset = self.default_quote_token
             
             # Basic suffix checking to separate Base and Quote
-            if symbol.endswith("USDT"):
-                base_asset = symbol[:-4]
-                quote_asset = "USDT"
-            elif symbol.endswith("USDC"):
-                base_asset = symbol[:-4]
-                quote_asset = "USDC"
-            elif symbol.endswith("BUSD"):
-                base_asset = symbol[:-4]
-                quote_asset = "BUSD"
+            extracted_quote = self._extract_quote_token_from_symbol(symbol)
+            if extracted_quote:
+                quote_asset = extracted_quote
+                base_asset = symbol[:-len(quote_asset)]
+            else:
+                if raise_on_invalid:
+                    raise ValueError(
+                        f"Unrecognized symbol format: {symbol} "
+                        "Please report this issue to the developers."
+                    )
+                continue
+            
+            if filter_quote_token and quote_asset != filter_quote_token:
+                continue
             
             current_market = UnifiedSingleFutureMarketInfo()
             current_market.name = base_asset
@@ -333,11 +357,11 @@ class BinanceClient(ExchangeBase):
                 return Decimal("-Infinity") if descending else Decimal("Infinity")
             return val
 
-        unified_info.sorted_markets = sorted(
+        unified_info.sorted_markets = new_list(sorted(
             unified_info.sorted_markets,
             key=key_fn,
             reverse=descending,
-        )
+        ))
         return unified_info
 
     # endregion

@@ -22,6 +22,7 @@ from trd_utils.exchanges.hyperliquid.hyperliquid_types import (
     MetaAssetCtxResponse,
     TraderPositionsInfoResponse,
 )
+from trd_utils.types_helper import new_list
 
 logger = logging.getLogger(__name__)
 
@@ -186,7 +187,7 @@ class HyperLiquidClient(ExchangeBase):
             uid=uid,
         )
         unified_result = UnifiedTraderPositions()
-        unified_result.positions = []
+        unified_result.positions = new_list()
         for position_container in result.asset_positions:
             position = position_container.position
             if min_margin and (
@@ -234,6 +235,8 @@ class HyperLiquidClient(ExchangeBase):
         sort_by: str = "percentage_change_24h",
         descending: bool = True,
         allow_delisted: bool = False,
+        filter_quote_token: str | None = None,
+        raise_on_invalid: bool = False,
     ) -> UnifiedFuturesMarketInfo:
         asset_ctxs = await self.get_meta_asset_ctx_info(
             allow_delisted=allow_delisted,
@@ -261,11 +264,11 @@ class HyperLiquidClient(ExchangeBase):
         def key_fn(market: UnifiedSingleFutureMarketInfo):
             return getattr(market, sort_by, Decimal(0))
 
-        unified_info.sorted_markets = sorted(
+        unified_info.sorted_markets = new_list(sorted(
             unified_info.sorted_markets,
             key=key_fn,
             reverse=descending,
-        )
+        ))
         return unified_info
 
     # endregion
