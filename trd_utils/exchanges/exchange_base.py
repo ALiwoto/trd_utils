@@ -12,6 +12,7 @@ import time
 import httpx
 from websockets.asyncio.connection import Connection as WSConnection
 
+from trd_utils.common_utils.httpx_utils import httpx_resp_to_json
 from trd_utils.exchanges.base_types import (
     UnifiedFuturesMarketInfo,
     UnifiedTraderInfo,
@@ -202,7 +203,7 @@ class ExchangeBase(ABC):
         if raw_data:
             return response.content
 
-        j_obj = self._resp_to_json(
+        j_obj = httpx_resp_to_json(
             response=response,
             parse_float=parse_float,
         )
@@ -210,37 +211,6 @@ class ExchangeBase(ABC):
             return j_obj
 
         return model_type.deserialize(j_obj)
-
-    def _resp_to_json(
-        self,
-        response: httpx.Response,
-        parse_float=None,
-    ) -> dict:
-        try:
-            return response.json(parse_float=parse_float)
-        except UnicodeDecodeError:
-            # try to decompress manually
-            import gzip
-            import brotli
-
-            content_encoding = response.headers.get("Content-Encoding", "").lower()
-            content = response.content
-
-            if "gzip" in content_encoding:
-                content = gzip.decompress(content)
-            elif "br" in content_encoding:
-                content = brotli.decompress(content)
-            elif "deflate" in content_encoding:
-                import zlib
-
-                content = zlib.decompress(content, -zlib.MAX_WBITS)
-            else:
-                raise ValueError(
-                    f"failed to detect content encoding: {content_encoding}"
-                )
-
-            # Now parse the decompressed content
-            return json.loads(content.decode("utf-8"), parse_float=parse_float)
 
     async def _apply_filter_func(
         self,

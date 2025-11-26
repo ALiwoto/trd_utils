@@ -13,7 +13,11 @@ from trd_utils.date_utils.datetime_helpers import dt_from_ts, dt_to_ts
 from trd_utils.html_utils.html_formats import camel_to_snake
 from trd_utils.types_helper.model_config import ModelConfig
 from trd_utils.types_helper.ultra_list import convert_to_ultra_list, UltraList
-from trd_utils.types_helper.utils import AbstractModel, get_my_field_types, is_type_optional
+from trd_utils.types_helper.utils import (
+    AbstractModel,
+    get_my_field_types,
+    is_type_optional,
+)
 
 # Whether to use ultra-list instead of normal python list or not.
 # This might be convenient in some cases, but it is not recommended
@@ -31,6 +35,7 @@ SET_CAMEL_ATTR_NAMES = False
 SPECIAL_FIELDS = [
     "_model_config",
 ]
+
 
 def new_list(original: Any = None) -> list:
     if original is None:
@@ -169,6 +174,13 @@ def generic_obj_to_value(
             expected_type=expected_type,
             value=value,
         )
+    
+    if isinstance(value, expected_type):
+        return value
+    
+    if value is None:
+        # we can't really do anything with None value here...
+        return None
 
     raise TypeError(f"unsupported type: {type(value)}")
 
@@ -183,9 +195,15 @@ class BaseModel(AbstractModel):
         annotations = get_my_field_types(self)
         for key, value in kwargs.items():
             corrected_key = key
-            if key not in annotations:
+            if (
+                self._model_config.mapped_fields
+                and corrected_key in self._model_config.mapped_fields
+            ):
+                corrected_key = self._model_config.mapped_fields[corrected_key]
+
+            if corrected_key not in annotations:
                 # key does not exist, try converting it to snake_case
-                corrected_key = camel_to_snake(key)
+                corrected_key = camel_to_snake(corrected_key)
                 if corrected_key not in annotations:
                     # just ignore and continue
                     annotations[key] = Any
