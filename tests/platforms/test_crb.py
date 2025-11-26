@@ -19,3 +19,11 @@ async def test_crb_get_top_1k_bubbles():
         for current in result.data[:10]:
             print(current)
             print(f"hour: {current.get_hourly_change()}")
+
+        pepe_info = result.try_find_by_symbol("kPEPE")
+        assert pepe_info is not None
+        print(f"found bubble by symbol 'kPEPE': {pepe_info}")
+
+        pepe_info = result.try_find_by_symbol("K" + "PEPE")
+        assert pepe_info is not None
+        print(f"found bubble by symbol 'kPEPE': {pepe_info}")
