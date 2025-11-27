@@ -29,70 +29,78 @@ class Bubbles1kSingleInfo(BaseModel):
     rank_diffs: dict[str, int] = None
     exchange_prices: dict[str, Decimal] = None
 
-    def get_monthly_change(self) -> Decimal | None:
+    def get_monthly_change(self, normalize: bool = True) -> Decimal | None:
         """
         Returns the normalized monthly change percentage if available.
         Please note that 1.0 means +100%, -1.0 means -100%, 0.5 means +50%, etc.
         """
-        return self.get_normalized_change("month")
+        return self.get_normalized_change(period="month", normalize=normalize)
 
-    def get_3months_change(self) -> Decimal | None:
+    def get_3months_change(self, normalize: bool = True) -> Decimal | None:
         """
         Returns the normalized 3 months change percentage if available.
         Please note that 1.0 means +100%, -1.0 means -100%, 0.5 means +50%, etc.
         """
-        return self.get_normalized_change("month3")
+        return self.get_normalized_change(period="month3", normalize=normalize)
 
-    def get_1minute_change(self) -> Decimal | None:
+    def get_1minute_change(self, normalize: bool = True) -> Decimal | None:
         """
         Returns the normalized 1 minute change percentage if available.
         Please note that 1.0 means +100%, -1.0 means -100%, 0.5 means +50%, etc.
         """
-        return self.get_normalized_change("min1")
+        return self.get_normalized_change(period="min1", normalize=normalize)
 
-    def get_weekly_change(self) -> Decimal | None:
+    def get_weekly_change(self, normalize: bool = True) -> Decimal | None:
         """
         Returns the normalized weekly change percentage if available.
         Please note that 1.0 means +100%, -1.0 means -100%, 0.5 means +50%, etc.
         """
-        return self.get_normalized_change("week")
+        return self.get_normalized_change(period="week", normalize=normalize)
 
-    def get_4hour_change(self) -> Decimal | None:
+    def get_4hour_change(self, normalize: bool = True) -> Decimal | None:
         """
         Returns the normalized 4 hour change percentage if available.
         Please note that 1.0 means +100%, -1.0 means -100%, 0.5 means +50%, etc.
         """
-        return self.get_normalized_change("hour4")
+        return self.get_normalized_change(period="hour4", normalize=normalize)
 
-    def get_yearly_change(self) -> Decimal | None:
+    def get_yearly_change(self, normalize: bool = True) -> Decimal | None:
         """
         Returns the normalized yearly change percentage if available.
         Please note that 1.0 means +100%, -1.0 means -100%, 0.5 means +50%, etc.
         """
-        return self.get_normalized_change("year")
+        return self.get_normalized_change(period="year", normalize=normalize)
 
-    def get_hourly_change(self) -> Decimal | None:
+    def get_hourly_change(self, normalize: bool = True) -> Decimal | None:
         """
         Returns the normalized 1 hour change percentage if available.
         Please note that 1.0 means +100%, -1.0 means -100%, 0.5 means +50%, etc.
         """
-        return self.get_normalized_change("hour")
+        return self.get_normalized_change(period="hour", normalize=normalize)
 
-    def get_daily_change(self) -> Decimal | None:
+    def get_daily_change(self, normalize: bool = True) -> Decimal | None:
         """
         Returns the normalized daily change percentage if available.
         Please note that 1.0 means +100%, -1.0 means -100%, 0.5 means +50%, etc.
         """
-        return self.get_normalized_change("day")
+        return self.get_normalized_change(period="day", normalize=normalize)
 
-    def get_normalized_change(self, period: str) -> Decimal | None:
+    def get_normalized_change(
+        self,
+        period: str,
+        normalize: bool = True,
+    ) -> Decimal | None:
         """
         Returns the normalized change percentage for the specific period if available.
         Please note that 1.0 means +100%, -1.0 means -100%, 0.5 means +50%, etc.
         Supported periods are: "1h", "24h", "week", "month", "3months", "6months", "year", "ytd"
         """
         if self.performance and period in self.performance:
-            return self.performance[period] / PERFORMANCE_BASE
+            return (
+                self.performance[period] / PERFORMANCE_BASE
+                if normalize
+                else self.performance[period]
+            )
         return None
 
     def __str__(self) -> str:
@@ -125,30 +133,30 @@ class BubblesTop1kCollection(BaseModel):
         """Build index once for O(1) lookups instead of O(n) loops"""
         if self._symbol_index is not None:
             return
-        
+
         self._symbol_index = {}
         if not self.data:
             return
-        
+
         for info in self.data:
             sym_lower = info.symbol.lower()
             self._symbol_index[sym_lower] = info
-    
+
     @classmethod
     def _strip_prefix(self, symbol_lower: str, original: str = None) -> str:
         """Remove exchange multiplier prefixes like 1000000, k, etc."""
         original = original or symbol_lower
-        
+
         # numeric prefixes (1000000MOG -> mog)
         for prefix in NUMERIC_PREFIXES:
             if symbol_lower.startswith(prefix):
-                return symbol_lower[len(prefix):]
-        
+                return symbol_lower[len(prefix) :]
+
         # letter prefix k/K (kPEPE -> pepe)
         # only strip if lowercase k/m followed by uppercase (to avoid stripping KAVA -> AVA)
-        if len(original) > 1 and original[0].lower() in 'km' and original[1].isupper():
+        if len(original) > 1 and original[0].lower() in "km" and original[1].isupper():
             return symbol_lower[1:]
-        
+
         return symbol_lower
 
     def try_find_by_symbol(self, symbol: str) -> Bubbles1kSingleInfo | None:
@@ -157,21 +165,21 @@ class BubblesTop1kCollection(BaseModel):
         Handles: 1000000MOG, kPEPE, 10000SATS, etc.
         """
         self._build_index()
-        
+
         if not self._symbol_index:
             return None
-        
+
         sym_lower = symbol.lower()
-        
+
         # 1. exact match (fast path)
         if sym_lower in self._symbol_index:
             return self._symbol_index[sym_lower]
-        
+
         # 2. try with prefix stripped
         stripped = self._strip_prefix(sym_lower, symbol)
         if stripped != sym_lower and stripped in self._symbol_index:
             return self._symbol_index[stripped]
-        
+
         return None
 
     def find_by_symbol(self, symbol: str) -> Bubbles1kSingleInfo | None:
