@@ -95,13 +95,14 @@ class Bubbles1kSingleInfo(BaseModel):
         Please note that 1.0 means +100%, -1.0 means -100%, 0.5 means +50%, etc.
         Supported periods are: "1h", "24h", "week", "month", "3months", "6months", "year", "ytd"
         """
-        if self.performance and period in self.performance:
-            return (
-                self.performance[period] / PERFORMANCE_BASE
-                if normalize
-                else self.performance[period]
-            )
-        return None
+        if not self.performance or period not in self.performance:
+            return None
+
+        perf = self.performance.get(period, None)
+        if perf is None:
+            return None
+
+        return perf / PERFORMANCE_BASE if normalize else perf
 
     def __str__(self) -> str:
         perf_str = ""
