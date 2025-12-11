@@ -1,24 +1,21 @@
 import asyncio
-from decimal import Decimal
+import base64
 import inspect
 import json
 import logging
-from typing import Callable, Type
-from abc import ABC
-
-import base64
 import time
+from decimal import Decimal
+from typing import Callable
 
 import httpx
 from websockets.asyncio.connection import Connection as WSConnection
 
-from trd_utils.common_utils.httpx_utils import httpx_resp_to_json
 from trd_utils.exchanges.base_types import (
     UnifiedFuturesMarketInfo,
     UnifiedTraderInfo,
     UnifiedTraderPositions,
 )
-from trd_utils.types_helper.base_model import BaseModel
+from trd_utils.http_utils import HttpAsyncClientBase
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +39,7 @@ class JWTManager:
         return time.time() > self.payload["exp"]
 
 
-class ExchangeBase(ABC):
+class ExchangeBase(HttpAsyncClientBase):
     ###########################################################
     # region client parameters
     user_agent: str = "okhttp/4.12.0"
@@ -138,79 +135,9 @@ class ExchangeBase(ABC):
     # region client helper methods
     def get_headers(self, payload=None, needs_auth: bool = False) -> dict:
         pass
-
-    async def invoke_get(
-        self,
-        url: str,
-        headers: dict | None = None,
-        params: dict | None = None,
-        model_type: Type[BaseModel] | None = None,
-        parse_float=Decimal,
-        raw_data: bool = False,
-    ) -> "BaseModel":
-        """
-        Invokes the specific request to the specific url with the specific params and headers.
-        """
-        response = await self.httpx_client.get(
-            url=url,
-            headers=headers,
-            params=params,
-        )
-        return self._handle_response(
-            response=response,
-            model_type=model_type,
-            parse_float=parse_float,
-            raw_data=raw_data,
-        )
-
-    async def invoke_post(
-        self,
-        url: str,
-        headers: dict | None = None,
-        params: dict | None = None,
-        content: dict | str | bytes = "",
-        model_type: Type[BaseModel] | None = None,
-        parse_float=Decimal,
-        raw_data: bool = False,
-    ) -> "BaseModel":
-        """
-        Invokes the specific request to the specific url with the specific params and headers.
-        """
-
-        if isinstance(content, dict):
-            content = json.dumps(content, separators=(",", ":"), sort_keys=True)
-
-        response = await self.httpx_client.post(
-            url=url,
-            headers=headers,
-            params=params,
-            content=content,
-        )
-        return self._handle_response(
-            response=response,
-            model_type=model_type,
-            parse_float=parse_float,
-            raw_data=raw_data,
-        )
-
-    def _handle_response(
-        self,
-        response: httpx.Response,
-        model_type: Type[BaseModel] | None = None,
-        parse_float=Decimal,
-        raw_data: bool = False,
-    ) -> "BaseModel":
-        if raw_data:
-            return response.content
-
-        j_obj = httpx_resp_to_json(
-            response=response,
-            parse_float=parse_float,
-        )
-        if not model_type:
-            return j_obj
-
-        return model_type.deserialize(j_obj)
+    
+    def get_platform_name(self) -> str:
+        return self.exchange_name
 
     async def _apply_filter_func(
         self,

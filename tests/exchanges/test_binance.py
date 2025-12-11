@@ -1,9 +1,16 @@
 import asyncio
-import pytest
-# import asyncio
 
+import pytest
+
+# import asyncio
 from trd_utils.exchanges import BinanceClient
 from trd_utils.types_helper import base_model
+
+LOCAL_PROXY_URL = "http://localhost:4141"
+
+# since we are testing, performance overhead of UltraList is not a concern
+base_model.ULTRA_LIST_ENABLED = True
+
 
 class FilterContainer:
     my_pairs: list = []
@@ -12,7 +19,18 @@ class FilterContainer:
     def __init__(self, quote_currency: str):
         self.quote_currency = quote_currency
 
-        for base in ["BTC", "ETH", "XRP", "LTC", "ADA", "SOL", "DOT", "DOGE", "AVAX", "MATIC"]:
+        for base in [
+            "BTC",
+            "ETH",
+            "XRP",
+            "LTC",
+            "ADA",
+            "SOL",
+            "DOT",
+            "DOGE",
+            "AVAX",
+            "MATIC",
+        ]:
             pair = f"{base}/{quote_currency}:{quote_currency}"
             self.my_pairs.append(pair)
 
@@ -22,15 +40,19 @@ class FilterContainer:
             pair += ":" + self.quote_currency
         return pair in self.my_pairs
 
-# since we are testing, performance overhead of UltraList is not a concern
-base_model.ULTRA_LIST_ENABLED = True
 
 @pytest.mark.asyncio
 async def test_binance_get_futures_market_info():
     async with BinanceClient() as client:
+        client.set_proxy_base_url(LOCAL_PROXY_URL)
+        if await client.is_proxy_available():
+            print(f"using proxy url: {LOCAL_PROXY_URL}")
+        else:
+            client.set_proxy_base_url(None)
         await do_market_info_by_quote(client, FilterContainer("USDT"))
         await do_market_info_by_quote(client, FilterContainer("USDC"))
-    
+
+
 async def do_market_info_by_quote(client: BinanceClient, filter_obj: FilterContainer):
     result = await client.get_unified_futures_market_info(
         sort_by="percentage_change_24h",
