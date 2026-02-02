@@ -20,6 +20,14 @@ def to_lower_camel_case(snake_str: str) -> str:
     camel_string = to_camel_case(snake_str)
     return snake_str[0].lower() + camel_string[1:]
 
+def to_unicode_escape(text):
+    """
+    Converts a string into a sequence of \\uXXXX format.
+    """
+    # We use f-strings to format the ordinal value of each char
+    # into 4-digit hexadecimal
+    return "".join(f"\\u{ord(char):04x}" for char in text)
+
 def get_html_normal(*argv) -> str:
     if argv is None or len(argv) == 0: 
         return ""
