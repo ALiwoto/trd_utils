@@ -1,6 +1,8 @@
 import datetime
 from decimal import Decimal
+import inspect
 import json
+import logging
 from typing import (
     Union,
     Any,
@@ -36,6 +38,7 @@ SPECIAL_FIELDS = [
     "_model_config",
 ]
 
+logger = logging.getLogger(__name__)
 
 def new_list(original: Any = None) -> list:
     if original is None:
@@ -60,6 +63,18 @@ def is_base_model_type(expected_type: type) -> bool:
 def is_any_type(target_type: type) -> bool:
     return target_type == Any or target_type is type(None)
 
+def call_method_safe(value: Any, method_name: str):
+    try:
+        target_method = getattr(value, method_name, None)
+        if not target_method:
+            return None
+        
+        if inspect.iscoroutinefunction(target_method):
+            logger.warning(f"coroutine functions are not supported for {method_name} methods yet")
+            return None
+        return target_method()
+    except Exception:
+        return None
 
 # TODO: add support for max_depth for this...
 def value_to_normal_obj(value, omit_none: bool = False):
@@ -71,6 +86,10 @@ def value_to_normal_obj(value, omit_none: bool = False):
         return value.to_dict(
             omit_none=omit_none,
         )
+    
+    j_value = call_method_safe(value, "to_json_obj")
+    if isinstance(j_value, (dict, list, int, str, tuple)):
+        return j_value
 
     if isinstance(value, list):
         results = new_list()
@@ -136,6 +155,19 @@ def generic_obj_to_value(
     if not expected_type_args:
         expected_type_args = get_type_args(expected_type)
 
+    expected_type_name = getattr(expected_type, "__name__", None)
+    if expected_type_name == "Any":
+        # we don't care about its type
+        return value
+    
+    if not expected_type_args:
+        if value is None or isinstance(value, expected_type):
+            return value
+        return convert_to_expected_type(
+            expected_type=expected_type,
+            value=value,
+        )
+    
     if isinstance(value, list):
         result = new_list()
         for current in value:
@@ -147,11 +179,6 @@ def generic_obj_to_value(
                 )
             )
         return result
-
-    expected_type_name = getattr(expected_type, "__name__", None)
-    if expected_type_name == "Any":
-        # we don't care about its type
-        return value
 
     if expected_type_name == "dict" and isinstance(value, dict):
         if not expected_type_args:
@@ -174,14 +201,6 @@ def generic_obj_to_value(
             )
         return expected_type(**value)
 
-    if not expected_type_args:
-        if value is None or isinstance(value, expected_type):
-            return value
-        return convert_to_expected_type(
-            expected_type=expected_type,
-            value=value,
-        )
-    
     if isinstance(value, expected_type):
         return value
     
