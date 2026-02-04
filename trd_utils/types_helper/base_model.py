@@ -150,6 +150,9 @@ def generic_obj_to_value(
 
     expected_type_name = getattr(expected_type, "__name__", None)
     if expected_type_name == "dict" and isinstance(value, dict):
+        if not expected_type_args:
+            # the value is a normal dict, so is the expected type, just set them directly
+            return value
         result = {}
         for inner_key, inner_value in value.items():
             result[expected_type_args[0](inner_key)] = generic_obj_to_value(
