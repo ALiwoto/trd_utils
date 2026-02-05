@@ -1,5 +1,6 @@
 # import pytest
 from decimal import Decimal
+from typing import Optional
 from trd_utils.types_helper import (
     base_model,
     BaseModel,
@@ -131,4 +132,28 @@ def test_list_as_obj1():
     assert my_data.buildings[1].name == "building2"
     assert my_data.buildings[1].level == 10
     
+
+class BindKeycodeResult1(BaseModel):
+    code: int = None
+    rewards: list[list[int]] | None = None
+
+class BindKeycodeResult2(BaseModel):
+    code: int = None
+    rewards: Optional[list[list[int]]] = None
+
+class BindKeycodeResult3(BaseModel):
+    code: int = None
+    rewards: list[list[int]] = None
+
+def test_keycode():
+    my_value = b'{"rewards": [[40004, 100], [27003, 800], [11001, 10], [11005, 10], [10001, 10]], "code": 0}'
+
+    result = BindKeycodeResult1.deserialize(my_value)
+    assert result.rewards[0][0] == 40004, "Optional parsing failed"
+
+    result = BindKeycodeResult2.deserialize(my_value)
+    assert result.rewards[0][0] == 40004, "Optional parsing failed"
+
+    result = BindKeycodeResult3.deserialize(my_value)
+    assert result.rewards[0][0] == 40004, "Optional parsing failed"
 

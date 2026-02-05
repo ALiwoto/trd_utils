@@ -4,7 +4,6 @@ import inspect
 import json
 import logging
 from typing import (
-    Union,
     Any,
     get_args as get_type_args,
 )
@@ -40,6 +39,7 @@ SPECIAL_FIELDS = [
 
 logger = logging.getLogger(__name__)
 
+
 def new_list(original: Any = None) -> list:
     if original is None:
         original = []
@@ -63,18 +63,22 @@ def is_base_model_type(expected_type: type) -> bool:
 def is_any_type(target_type: type) -> bool:
     return target_type == Any or target_type is type(None)
 
+
 def call_method_safe(value: Any, method_name: str):
     try:
         target_method = getattr(value, method_name, None)
         if not target_method:
             return None
-        
+
         if inspect.iscoroutinefunction(target_method):
-            logger.warning(f"coroutine functions are not supported for {method_name} methods yet")
+            logger.warning(
+                f"coroutine functions are not supported for {method_name} methods yet"
+            )
             return None
         return target_method()
     except Exception:
         return None
+
 
 # TODO: add support for max_depth for this...
 def value_to_normal_obj(value, omit_none: bool = False):
@@ -86,7 +90,7 @@ def value_to_normal_obj(value, omit_none: bool = False):
         return value.to_dict(
             omit_none=omit_none,
         )
-    
+
     j_value = call_method_safe(value, "to_json_obj")
     if isinstance(j_value, (dict, list, int, str, tuple)):
         return j_value
@@ -159,7 +163,7 @@ def generic_obj_to_value(
     if expected_type_name == "Any":
         # we don't care about its type
         return value
-    
+
     if not expected_type_args:
         if value is None or isinstance(value, expected_type):
             return value
@@ -167,7 +171,7 @@ def generic_obj_to_value(
             expected_type=expected_type,
             value=value,
         )
-    
+
     if isinstance(value, list):
         result = new_list()
         for current in value:
@@ -203,7 +207,7 @@ def generic_obj_to_value(
 
     if isinstance(value, expected_type):
         return value
-    
+
     if value is None:
         # we can't really do anything with None value here...
         return None
@@ -260,7 +264,10 @@ class BaseModel(AbstractModel):
             # variable or something like that.
             if is_optional_type:
                 try:
+                    # useless none type hints, we already know this is optional duh
+                    expected_type_args = list(filter(lambda a: a is not type(None), expected_type_args))
                     expected_type = expected_type_args[0]
+                    expected_type_args = get_type_args(expected_type)
                 except Exception:
                     # something went wrong, just ignore and continue
                     expected_type = Any
@@ -335,10 +342,10 @@ class BaseModel(AbstractModel):
     @classmethod
     def deserialize(
         cls,
-        json_data: Union[str, dict],
+        json_data: str | bytes | bytearray | dict,
         parse_float=Decimal,
     ):
-        if isinstance(json_data, str):
+        if isinstance(json_data, str | bytes | bytearray):
             data = json.loads(
                 json_data,
                 parse_float=parse_float,
