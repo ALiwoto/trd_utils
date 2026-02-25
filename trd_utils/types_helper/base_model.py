@@ -138,13 +138,27 @@ def convert_to_expected_type(
     default_value=None,
 ):
     try:
+        if issubclass(expected_type, BaseModel) and isinstance(value, dict):
+            # base model requires a dict
+            return expected_type(**value)
+
         return expected_type(value)
-    except Exception:
+    except Exception as ex:
         if value == "":
             try:
                 return expected_type()
-            except Exception:
+            except Exception as inner_ex:
+                logger.warning(
+                    f"failed to parse value of type {type(value)} as {expected_type}: "
+                    f"{type(ex)}: {ex};"
+                    f"the target type failed to initialize with empty args: "
+                    f"{type(inner_ex)}: {inner_ex}"
+                )
                 return default_value
+        logger.warning(
+            f"failed to parse value of type {type(value)} as {expected_type}: "
+            f"{type(ex)}: {ex}"
+        )
         return default_value
 
 
@@ -265,7 +279,9 @@ class BaseModel(AbstractModel):
             if is_optional_type:
                 try:
                     # useless none type hints, we already know this is optional duh
-                    expected_type_args = list(filter(lambda a: a is not type(None), expected_type_args))
+                    expected_type_args = list(
+                        filter(lambda a: a is not type(None), expected_type_args)
+                    )
                     expected_type = expected_type_args[0]
                     expected_type_args = get_type_args(expected_type)
                 except Exception:
