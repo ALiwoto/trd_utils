@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# Extra dependency needed by the exchange websocket features.
+websockets>=15.0.1

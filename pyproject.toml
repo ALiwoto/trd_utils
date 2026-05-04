@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "trd_utils"
-version = "0.0.69"
+version = "0.0.70"
 description = "Common Basic Utils for Python3. By ALiwoto."
 authors = ["ALiwoto <aminnimaj@gmail.com>"]
 packages = [
@@ -17,11 +17,14 @@ keywords = ["utils", "trd_utils", "basic-utils", "common-utils"]
 homepage = "https://github.com/ALiwoto/trd_utils"
 
 [tool.poetry.dependencies]
-python = ">=3.7"
+python = ">=3.10"
 httpx = ">=0.21.0"
 cryptography = ">=41.0.7"
-websockets = ">=15.0.1"
 python-dateutil = ">=2.9.0.post0"
+websockets = { version = ">=15.0.1", optional = true }
+
+[tool.poetry.extras]
+exchanges = ["websockets"]
 
 [tool.poetry.dev-dependencies]
 pytest = ">=7.2"
