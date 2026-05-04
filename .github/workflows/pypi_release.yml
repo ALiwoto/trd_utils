@@ -30,12 +30,16 @@ jobs:
           password: ${{ secrets.PYPI_API_TOKEN }}
       - name: Set the Version
         run: |
-          grep_result=$(grep version pyproject.toml)
-          prefix="version = \""
-          suffix="\""
-          final_value=${grep_result#"$prefix"}
-          final_value=${final_value%"$suffix"}
-          echo "CURRENT_LIB_VERSION=$(echo 'v'$final_value)" >> $GITHUB_ENV
+          final_value=$(python - <<'PY'
+          import pathlib
+          import tomllib
+
+          pyproject_path = pathlib.Path("pyproject.toml")
+          data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+          print(data["tool"]["poetry"]["version"])
+          PY
+          )
+          echo "CURRENT_LIB_VERSION=v$final_value" >> $GITHUB_ENV
       - name: Create GitHub Release
         id: create_release
         uses: elgohr/Github-Release-Action@v5
