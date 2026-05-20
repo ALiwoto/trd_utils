@@ -1,8 +1,10 @@
 
 from .html_formats import (
     get_html_normal,
+    html_blockquote,
     html_bold,
     html_code_snippets,
+    html_expandable_blockquote,
     html_in_parenthesis,
     html_italic,
     html_link,
@@ -24,5 +26,7 @@ __all__ = [
     "html_code_snippets",
     "html_pre",
     "html_spoiler",
-    "to_unicode_escape"
+    "html_blockquote",
+    "html_expandable_blockquote",
+    "to_unicode_escape",
 ]
