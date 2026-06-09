@@ -22,8 +22,8 @@ class GroupContainer(BaseModel):
     created_at: str = None
     something: str = "default value here"
 
-    some_field1: int = 10
-    some_field2: int = 20
+    some_field1: int | None = 10
+    some_field2: int | None = None
     some_field3: int = 100
 
 class MultiTypeHint(BaseModel):
@@ -71,7 +71,7 @@ def test_my_data1():
     print(my_data.groups)
 
     assert my_data is not None
-    assert my_data.main_group.some_field2 == 20
+    assert my_data.main_group.some_field2 is None
     assert my_data.main_group.some_field3 == 100
     assert my_data.main_group.something is None
     assert my_data.some_lists[0][0][0] == "a"
